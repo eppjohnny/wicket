@@ -23,6 +23,7 @@ import org.apache.wicket.page.PageManager;
 import org.apache.wicket.pageStore.AsynchronousPageStore;
 import org.apache.wicket.pageStore.CryptingPageStore;
 import org.apache.wicket.pageStore.DiskPageStore;
+import org.apache.wicket.pageStore.FilePageStore;
 import org.apache.wicket.pageStore.GroupingPageStore;
 import org.apache.wicket.pageStore.IPageStore;
 import org.apache.wicket.pageStore.InMemoryPageStore;
@@ -68,6 +69,7 @@ import org.apache.wicket.util.lang.Bytes;
  * Other stores be may inserted ad libitum, e.g.
  * <ul>
  * <li>{@link GroupingPageStore} groups pages with their own maximum page limit</li>
+ * <li>{@link FilePageStore} as alternative to the trusted {@link DiskPageStore}</li>
  * <li>{@link CryptingPageStore} encrypting all pages - read its documentation on what restrictions it poses on the chain of stores</li>
  * </ul>
  */

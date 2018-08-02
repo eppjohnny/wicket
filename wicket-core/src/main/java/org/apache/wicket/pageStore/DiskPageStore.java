@@ -42,6 +42,7 @@ import javax.servlet.http.HttpSessionBindingListener;
 import org.apache.wicket.Session;
 import org.apache.wicket.WicketRuntimeException;
 import org.apache.wicket.page.IManageablePage;
+import org.apache.wicket.pageStore.disk.NestedFolders;
 import org.apache.wicket.pageStore.disk.PageWindowManager;
 import org.apache.wicket.pageStore.disk.PageWindowManager.FileWindow;
 import org.apache.wicket.serialize.ISerializer;
@@ -74,7 +75,7 @@ public class DiskPageStore implements IPersistentPageStore
 
 	private final Bytes maxSizePerSession;
 
-	private final File fileStoreFolder;
+	private final NestedFolders folders;
 
 	private final ConcurrentMap<String, DiskData> diskDatas;
 
@@ -111,15 +112,15 @@ public class DiskPageStore implements IPersistentPageStore
 		ISerializer serializer)
 	{
 		this.applicationName = Args.notNull(applicationName, "applicationName");
+		this.folders = new NestedFolders(new File(fileStoreFolder, applicationName + "-filestore"));
 		this.maxSizePerSession = Args.notNull(maxSizePerSession, "maxSizePerSession");
-		this.fileStoreFolder = Args.notNull(fileStoreFolder, "fileStoreFolder");
 		this.serializer = serializer; // optional
 
 		this.diskDatas = new ConcurrentHashMap<>();
 
 		try
 		{
-			if (this.fileStoreFolder.exists() || this.fileStoreFolder.mkdirs())
+			if (folders.getBase().exists() || folders.getBase().mkdirs())
 			{
 				loadIndex();
 			}
@@ -184,13 +185,12 @@ public class DiskPageStore implements IPersistentPageStore
 				{
 					page = (IManageablePage)serializer.deserialize(data);
 				}
-			}
-		}
 
-		if (log.isDebugEnabled())
-		{
-			log.debug("Returning page with id '{}' in session with id '{}'",
-				page != null ? "" : "(null)", id, context.getSessionId());
+				if (log.isDebugEnabled())
+				{
+					log.debug("Returning page with id '{}' in session with id '{}'", id, context.getSessionId());
+				}
+			}
 		}
 
 		return page;
@@ -314,7 +314,7 @@ public class DiskPageStore implements IPersistentPageStore
 	@SuppressWarnings("unchecked")
 	private void loadIndex()
 	{
-		File storeFolder = getStoreFolder();
+		File storeFolder = folders.getBase();
 
 		File index = new File(storeFolder, INDEX_FILE_NAME);
 		if (index.exists() && index.length() > 0)
@@ -352,7 +352,7 @@ public class DiskPageStore implements IPersistentPageStore
 	 */
 	private void saveIndex()
 	{
-		File storeFolder = getStoreFolder();
+		File storeFolder = folders.getBase();
 		if (storeFolder.exists())
 		{
 			File index = new File(storeFolder, INDEX_FILE_NAME);
@@ -632,37 +632,9 @@ public class DiskPageStore implements IPersistentPageStore
 		 */
 		public synchronized void unbind()
 		{
-			File sessionFolder = pageStore.getSessionFolder(sessionIdentifier, false);
-			if (sessionFolder.exists())
-			{
-				Files.removeFolder(sessionFolder);
-				cleanup(sessionFolder);
-			}
+			pageStore.folders.remove(sessionIdentifier);
 
 			sessionIdentifier = null;
-		}
-
-		/**
-		 * deletes the sessionFolder's parent and grandparent, if (and only if) they are empty.
-		 *
-		 * @see #createPathFrom(String sessionId)
-		 * @param sessionFolder
-		 *            must not be null
-		 */
-		private void cleanup(final File sessionFolder)
-		{
-			File high = sessionFolder.getParentFile();
-			if (high != null && high.list().length == 0)
-			{
-				if (Files.removeFolder(high))
-				{
-					File low = high.getParentFile();
-					if (low != null && low.list().length == 0)
-					{
-						Files.removeFolder(low);
-					}
-				}
-			}
 		}
 	}
 
@@ -676,80 +648,8 @@ public class DiskPageStore implements IPersistentPageStore
 	 */
 	private String getSessionFileName(String sessionIdentifier, boolean createSessionFolder)
 	{
-		File sessionFolder = getSessionFolder(sessionIdentifier, createSessionFolder);
+		File sessionFolder = folders.get(sessionIdentifier, createSessionFolder);
 		return new File(sessionFolder, "data").getAbsolutePath();
-	}
-
-	/**
-	 * This folder contains sub-folders named as the session id for which they hold the data.
-	 * 
-	 * @return the folder where the pages are stored
-	 */
-	protected File getStoreFolder()
-	{
-		return new File(fileStoreFolder, applicationName + "-filestore");
-	}
-
-	/**
-	 * Returns the folder for the specified sessions. If the folder doesn't exist and the create
-	 * flag is set, the folder will be created.
-	 * 
-	 * @param sessionIdentifier
-	 * @param create
-	 * @return folder used to store session data
-	 */
-	protected File getSessionFolder(String sessionIdentifier, final boolean create)
-	{
-		File storeFolder = getStoreFolder();
-
-		sessionIdentifier = sessionIdentifier.replace('*', '_');
-		sessionIdentifier = sessionIdentifier.replace('/', '_');
-		sessionIdentifier = sessionIdentifier.replace(':', '_');
-
-		sessionIdentifier = createPathFrom(sessionIdentifier);
-
-		File sessionFolder = new File(storeFolder, sessionIdentifier);
-		if (create && sessionFolder.exists() == false)
-		{
-			Files.mkdirs(sessionFolder);
-		}
-		return sessionFolder;
-	}
-
-	/**
-	 * creates a three-level path from the sessionId in the format 0000/0000/<sessionId>. The two
-	 * prefixing directories are created from the sessionId's hashcode and thus, should be well
-	 * distributed.
-	 *
-	 * This is used to avoid problems with Filesystems allowing no more than 32k entries in a
-	 * directory.
-	 *
-	 * Note that the prefix paths are created from Integers and not guaranteed to be four chars
-	 * long.
-	 *
-	 * @param sessionId
-	 *            must not be null
-	 * @return path in the form 0000/0000/sessionId
-	 */
-	private String createPathFrom(final String sessionId)
-	{
-		int sessionIdHashCode = sessionId.hashCode();
-		if (sessionIdHashCode == Integer.MIN_VALUE)
-		{
-			// Math.abs(MIN_VALUE) == MIN_VALUE, so avoid it
-			sessionIdHashCode += 1;
-		}
-		int hash = Math.abs(sessionIdHashCode);
-		String low = String.valueOf(hash % 9973);
-		String high = String.valueOf((hash / 9973) % 9973);
-		StringBuilder bs = new StringBuilder(sessionId.length() + 10);
-		bs.append(low);
-		bs.append(File.separator);
-		bs.append(high);
-		bs.append(File.separator);
-		bs.append(sessionId);
-
-		return bs.toString();
 	}
 
 	/**

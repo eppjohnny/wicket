@@ -27,23 +27,23 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 /**
- * Test for {@link DiskPageStore}.
+ * Test for {@link FilePageStore}.
  */
 @Category(SlowTests.class)
-public class DiskPageStoreTest extends AbstractConcurrentPageStoreTest
+public class FilePageStoreTest extends AbstractConcurrentPageStoreTest
 {
-
+	
 	private static final Bytes MAX_SIZE_PER_SESSION = Bytes.megabytes(10);
-
+	
 	/**
 	 * @throws IOException 
 	 */
 	@Test
 	public void store() throws IOException
 	{
-		File fileStoreFolder = Files.createTempDirectory(null).toFile();
+		File folder = Files.createTempDirectory(null).toFile();
 
-		IPageStore pageStore = new DiskPageStore("app1", fileStoreFolder, MAX_SIZE_PER_SESSION, new JavaSerializer("app1"));
+		IPageStore pageStore = new FilePageStore("app1", folder, MAX_SIZE_PER_SESSION, new JavaSerializer("app1"));
 
 		doTestStore(pageStore);
 
