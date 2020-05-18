@@ -25,6 +25,7 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Spliterators;
 import java.util.stream.Stream;
@@ -128,10 +129,16 @@ public abstract class MarkupContainer extends Component implements Iterable<Comp
 	 * This is stored in meta data because it only is necessary when a child is removed, and this
 	 * saves the memory necessary for a field on a widely used class.
 	 */
-	private static final MetaDataKey<LinkedList<RemovedChild>> REMOVALS_KEY = new MetaDataKey<LinkedList<RemovedChild>>()
+	private static final MetaDataKey<LinkedList<RemovedChild>> REMOVALS_KEY = new MetaDataKey<>()
 	{
 		private static final long serialVersionUID = 1L;
 	};
+	
+	/**
+	 * This flag tracks if the {@link #REMOVALS_KEY} has been set on this component. Clearing this
+	 * key is an expensive operation. With this flag this expensive call can be avoided.
+	 */
+	private static final short RFLAG_HAS_REMOVALS = 0x4000;
 
 	/**
 	 * Administrative class for detecting removed children during child iteration. Not intended to
@@ -561,7 +568,7 @@ public abstract class MarkupContainer extends Component implements Iterable<Comp
 		 */
 		class MarkupChildIterator implements Iterator<Component>
 		{
-			private int indexInRemovalsSinceLastUpdate = removals_size();
+			private int indexInRemovalsSinceLastUpdate;
 			private int expectedModCounter = -1;
 			private Component currentComponent = null;
 			private Iterator<Component> internalIterator = null;
@@ -589,8 +596,10 @@ public abstract class MarkupContainer extends Component implements Iterable<Comp
 
 			private void refreshInternalIteratorIfNeeded()
 			{
-				if (expectedModCounter >= modCounter)
+				if (expectedModCounter >= modCounter) {
+					// no new modifications
 					return;
+				}
 
 				if (children == null)
 				{
@@ -614,7 +623,6 @@ public abstract class MarkupContainer extends Component implements Iterable<Comp
 				// since we now have a new iterator, we need to set it to the last known position
 				currentComponent = findLastExistingChildAlreadyReturned(currentComponent);
 				expectedModCounter = modCounter;
-				indexInRemovalsSinceLastUpdate = removals_size();
 
 				if (currentComponent != null)
 				{
@@ -626,33 +634,38 @@ public abstract class MarkupContainer extends Component implements Iterable<Comp
 				}
 			}
 
-			private Component findLastExistingChildAlreadyReturned(Component target)
+			private Component findLastExistingChildAlreadyReturned(Component current)
 			{
-				while (true)
-				{
-					if (target == null)
-						return null;
-
-					RemovedChild removedChild = null;
-					for (int i = indexInRemovalsSinceLastUpdate; i < removals_size(); i++)
-					{
-						RemovedChild curRemovedChild = removals_get(i);
-						if (curRemovedChild.removedChild == target ||
-							curRemovedChild.removedChild == null)
+				if (current == null) {
+					indexInRemovalsSinceLastUpdate = 0;
+				} else {
+					LinkedList<RemovedChild> removals = removals_get();
+					if (removals != null) {
+						check_removed:
+						while (current != null)
 						{
-							removedChild = curRemovedChild;
+							for (int i = indexInRemovalsSinceLastUpdate; i < removals.size(); i++)
+							{
+								RemovedChild removal = removals.get(i);
+								if (removal.removedChild == current ||
+									removal.removedChild == null)
+								{
+									current = removal.previousSibling;
+									
+									// current was removed, use its sibling instead
+									continue check_removed;
+								}
+							}
+							
+							// current wasn't removed, keep it
 							break;
 						}
-					}
-					if (removedChild == null)
-					{
-						return target;
-					}
-					else
-					{
-						target = removedChild.previousSibling;
+						
+						indexInRemovalsSinceLastUpdate = removals.size();
 					}
 				}
+				
+				return current;
 			}
 		};
 		return new MarkupChildIterator();
@@ -1315,7 +1328,7 @@ public abstract class MarkupContainer extends Component implements Iterable<Comp
 	 */
 	private LinkedList<RemovedChild> removals_get()
 	{
-		return getMetaData(REMOVALS_KEY);
+		return getRequestFlag(RFLAG_HAS_REMOVALS) ? getMetaData(REMOVALS_KEY) : null;
 	}
 
 	/**
@@ -1327,6 +1340,7 @@ public abstract class MarkupContainer extends Component implements Iterable<Comp
 	 */
 	private void removals_set(LinkedList<RemovedChild> removals)
 	{
+		setRequestFlag(RFLAG_HAS_REMOVALS, removals != null);
 		setMetaData(REMOVALS_KEY, removals);
 	}
 
@@ -1335,7 +1349,10 @@ public abstract class MarkupContainer extends Component implements Iterable<Comp
 	 */
 	private void removals_clear()
 	{
-		setMetaData(REMOVALS_KEY, null);
+		if (getRequestFlag(RFLAG_HAS_REMOVALS))
+		{
+			removals_set(null);
+		}
 	}
 
 	/**
@@ -1358,29 +1375,6 @@ public abstract class MarkupContainer extends Component implements Iterable<Comp
 			removals_set(removals);
 		}
 		removals.add(new RemovedChild(removedChild, prevSibling));
-	}
-
-	/**
-	 * Gets the {@link RemovedChild} from the list of removals at given position.
-	 * 
-	 * @param i
-	 *            the position
-	 * @return the removed child
-	 */
-	private RemovedChild removals_get(int i)
-	{
-		return getMetaData(REMOVALS_KEY).get(i);
-	}
-
-	/**
-	 * Gets the number of removals that happened during the request.
-	 * 
-	 * @return the number of removals
-	 */
-	private int removals_size()
-	{
-		LinkedList<RemovedChild> removals = removals_get();
-		return removals == null ? 0 : removals.size();
 	}
 
 	/**
@@ -1559,8 +1553,8 @@ public abstract class MarkupContainer extends Component implements Iterable<Comp
 				@Override
 				public void component(Component component, IVisit<Void> visit)
 				{
-					if (Strings.getLevenshteinDistance(id.toLowerCase(), component.getId()
-						.toLowerCase()) < 3)
+					if (Strings.getLevenshteinDistance(id.toLowerCase(Locale.ROOT), component.getId()
+						.toLowerCase(Locale.ROOT)) < 3)
 					{
 						names.add(component.getPageRelativePath());
 					}
@@ -2199,7 +2193,7 @@ public abstract class MarkupContainer extends Component implements Iterable<Comp
 			@Override
 			public boolean hasNext()
 			{
-				if (!currentIterator.hasNext() && !iteratorStack.isEmpty())
+				while (!currentIterator.hasNext() && !iteratorStack.isEmpty())
 				{
 					currentIterator = iteratorStack.pop();
 				}

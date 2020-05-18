@@ -16,6 +16,8 @@
  */
 package org.apache.wicket.markup.html.form;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,18 +29,37 @@ import org.apache.wicket.util.resource.IResourceStream;
 import org.apache.wicket.util.resource.StringResourceStream;
 import org.apache.wicket.util.tester.FormTester;
 import org.apache.wicket.util.tester.WicketTestCase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Pedro Santos
  */
-public class NestedFormsTest extends WicketTestCase
+class NestedFormsTest extends WicketTestCase
 {
 	/**
-	 *
+	 * 
 	 */
 	@Test
-	public void postOrderSequenceSubmittingRootForm()
+	void tagName() throws Exception
+	{
+		tester.executeTest(NestedFormsTest.class, new TestPage(), "NestedFormsTest_expected.html");
+
+	}
+
+	/**
+	 * WICKET-2166, WICKET-6760
+	 */
+	@Test
+	void tagNamePlaceholder() throws Exception
+	{
+		tester.executeTest(NestedFormsTest.class, new TestPage().hideInner(), "NestedFormsTest_placeholder_expected.html");
+	}
+
+	/**
+	 * 
+	 */
+	@Test
+	void postOrderSequenceSubmittingRootForm()
 	{
 		tester.startPage(TestPage.class);
 		TestPage testPage = (TestPage)tester.getLastRenderedPage();
@@ -54,7 +75,7 @@ public class NestedFormsTest extends WicketTestCase
 	 *
 	 */
 	@Test
-	public void postOrderSequenceSubmittingInnerForm()
+	void postOrderSequenceSubmittingInnerForm()
 	{
 		tester.startPage(TestPage.class);
 		TestPage testPage = (TestPage)tester.getLastRenderedPage();
@@ -129,6 +150,14 @@ public class NestedFormsTest extends WicketTestCase
 				}
 			};
 			innerForm.add(innerSubmit);
+		}
+
+		public TestPage hideInner()
+		{
+			innerForm.setOutputMarkupPlaceholderTag(true);
+			innerForm.setVisible(false);
+			
+			return this;
 		}
 
 		@Override

@@ -24,13 +24,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import org.apache.wicket.util.encoding.UrlDecoder;
 import org.apache.wicket.util.io.IOUtils;
 import org.apache.wicket.util.io.Streams;
 import org.apache.wicket.util.lang.Args;
 import org.apache.wicket.util.string.Strings;
-import org.apache.wicket.util.time.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -364,7 +364,7 @@ public class Files
 	public static File getLocalFileFromUrl(URL url)
 	{
 		final URL location = Args.notNull(url, "url");
-		return getLocalFileFromUrl(UrlDecoder.PATH_INSTANCE.decode(location.toExternalForm(), "UTF-8"));
+		return getLocalFileFromUrl(UrlDecoder.PATH_INSTANCE.decode(location.toExternalForm(), StandardCharsets.UTF_8));
 	}
 
 	/**
@@ -413,7 +413,7 @@ public class Files
 	 * 
 	 * @return timestamp
 	 */
-	public static Time getLastModified(File file)
+	public static Instant getLastModified(File file)
 	{
 		// get file modification timestamp
 		long millis = file.lastModified();
@@ -425,7 +425,7 @@ public class Files
 		}
 
 		// last file modification timestamp
-		return Time.millis(millis);
+		return Instant.ofEpochMilli(millis);
 	}
 
 	/**
@@ -460,5 +460,19 @@ public class Files
 		}
 		logger.error("Failed to create directory: " + folder);
 		return false;
+	}
+
+	/**
+	 * List all files inside the given file.
+	 * 
+	 * @param file directory
+	 * @return files, never {@code null}
+	 */
+	public static File[] list(File file) {
+		File[] files = file.listFiles();
+		if (files == null) {
+			files = new File[0];
+		}
+		return files;
 	}
 }

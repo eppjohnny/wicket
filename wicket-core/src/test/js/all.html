@@ -13,8 +13,8 @@
     </script>
     <!--<script src="https://code.jquery.com/jquery-migrate-3.0.0.js"></script>-->
 	<script src="../../main/java/org/apache/wicket/ajax/res/js/wicket-ajax-jquery.js"></script>
-	<script src="../../main/java/org/apache/wicket/ajax/res/js/wicket-ajax-jquery-debug.js"></script>
 	<script type="text/javascript" src="qunit/qunit.js"></script>
+	<script type="text/javascript" src="qunit/jquery.mockjax.js"></script>
 	<script type="text/javascript" src="qunit/blanket.min.js"></script>
 
 	<!-- the module under test -->
@@ -45,7 +45,7 @@
 		<div id="evaluationId"></div>
 		<div id="priorityEvaluationId"></div>
 		<div id="evaluationIdentifierAndCodeId"></div>
-		<div id="twoEvaluationsWithIdentifier"></div>
+		<div id="multipleEvaluationsWithIdentifier"></div>
 
 		<div id="componentToReplace">old body</div>
 
@@ -88,6 +88,9 @@
 		<textarea id="componentToReplaceTitle">
 			<ajax-response><component id="titleId"><![CDATA[<title id="titleId">new title</title>]]></component></ajax-response>
 		</textarea>
+
+		<div id="componentPlaceholderId" data-wicket-placeholder="">
+		</div>
 
 		<!--
 			DOM
@@ -176,8 +179,6 @@
 		</form>
 
 		<div id="usedAsContextWicket5025"></div>
-
-		<input type="text" id="inputChangeInput">
 
 		<div id="ajaxIndicator"></div>
 	</div>

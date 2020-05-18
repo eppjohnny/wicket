@@ -36,7 +36,7 @@ public class MockComponent implements IRequestableComponent, IRequestListener
 	/**
 	 * Construct.
 	 */
-	public MockComponent()
+    MockComponent()
 	{
 	}
 
@@ -69,7 +69,7 @@ public class MockComponent implements IRequestableComponent, IRequestListener
 	 * @param id
 	 * @return <code>this</code>
 	 */
-	public MockComponent setId(String id)
+    private MockComponent setId(String id)
 	{
 		this.id = id;
 		return this;
@@ -108,7 +108,7 @@ public class MockComponent implements IRequestableComponent, IRequestListener
 	 * @param page
 	 * @return <code>this</code>
 	 */
-	public MockComponent setPage(IRequestablePage page)
+    private MockComponent setPage(IRequestablePage page)
 	{
 		this.page = page;
 		return this;
@@ -126,15 +126,14 @@ public class MockComponent implements IRequestableComponent, IRequestListener
 	 * @param path
 	 * @return <code>this</code>
 	 */
-	public MockComponent setPath(String path)
+    MockComponent setPath(String path)
 	{
 		this.path = path;
 		return this;
 	}
 
 	@Override
-	public void detach()
-	{
+	public void detach() {
 	}
 
 	@Override
@@ -173,7 +172,7 @@ public class MockComponent implements IRequestableComponent, IRequestListener
 		}
 		return null;
 	}
-	
+
 	@Override
 	public void onRequest()
 	{

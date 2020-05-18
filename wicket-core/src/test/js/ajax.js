@@ -83,23 +83,12 @@ jQuery(document).ready(function() {
 			execute(attrs);
 		});
 
-		asyncTest('processEvaluation with mock data (priority-evaluate).', function () {
+		/**
+		 * Suspends execution.
+		 */
+		asyncTest('processEvaluation with suspend.', function () {
 
 			expect(2);
-
-			var attrs = {
-				u: 'data/ajax/priorityEvaluationId.xml',
-				c: 'priorityEvaluationId'
-			};
-			execute(attrs);
-		});
-
-		/**
-		 * Executes the second part of 'something|functionBody' by passing 'notify' function as parameter
-		 */
-		asyncTest('processEvaluation with identifier|code.', function () {
-
-			expect(5);
 
 			var attrs = {
 				u: 'data/ajax/evaluationIdentifierAndCodeId.xml',
@@ -109,17 +98,15 @@ jQuery(document).ready(function() {
 		});
 
 		/**
-		 * Executes the second part of 'something|functionBody' by passing 'notify' function as parameter.
-		 * There are two functions with passed 'notify' function which leads to splitting the text in
-		 * <(priority-)evaluate> elements to eval one function at a time to be able to call notify manually.
+		 * Suspends executions.
 		 */
-		asyncTest('processEvaluation*s* with identifier|code.', function () {
+		asyncTest('processEvaluation*s* with suspend.', function () {
 
-			expect(6);
+			expect(4);
 
 			var attrs = {
-				u: 'data/ajax/twoEvaluationsWithIdentifier.xml',
-				c: 'twoEvaluationsWithIdentifier'
+				u: 'data/ajax/multipleEvaluationsWithIdentifier.xml',
+				c: 'multipleEvaluationsWithIdentifier'
 			};
 			execute(attrs);
 		});
@@ -150,8 +137,8 @@ jQuery(document).ready(function() {
 
 			var oldWicketLogError = Wicket.Log.error;
 
-			Wicket.Log.error = function(msg) {
-				equal(msg, 'Wicket.Ajax.Call.processComponent: Component with id [[componentToReplaceDoesNotExist]] was not found while trying to perform markup update. Make sure you called component.setOutputMarkupId(true) on the component whose markup you are trying to update.');
+			Wicket.Log.error = function() {
+				equal(arguments[1], "componentToReplaceDoesNotExist");
 
 				// restore the original method
 				Wicket.Log.error = oldWicketLogError;
@@ -1247,42 +1234,6 @@ jQuery(document).ready(function() {
 		});
 
 		/**
-		 * https://issues.apache.org/jira/browse/WICKET-5047
-		 */
-		asyncTest('try/catch only the content of \'script type="text/javascript"\'.', function () {
-
-			// manually call HTMLScriptElement.onload() to let
-			// FunctionsExecutor finish its work
-			var oldAddElement = Wicket.Head.addElement;
-			Wicket.Head.addElement = function(element) {
-				oldAddElement(element);
-				if (element.onload) {
-					element.onload();
-				}
-			};
-
-			expect(2);
-
-			var attrs = {
-				u: 'data/ajax/javaScriptTemplate.xml',
-				coh: [
-					function() {
-						start();
-
-						var jsTemplateText = jQuery('#jsTemplate').text();
-						equal(jsTemplateText, 'var data = 123;', 'JavaScript template is *not* try/catched');
-
-						var jsNonTemplateText = jQuery('#jsNonTemplate').text();
-						equal(jsNonTemplateText, 'try{var data = 456;}catch(e){Wicket.Log.error(e);}', 'JavaScript non template *is* try/catched');
-
-					}
-				]
-			};
-
-			Wicket.Ajax.ajax(attrs);
-		});
-
-		/**
 		 * 'null' values passed to _asParamArray() should be spliced
 		 * See http://markmail.org/message/khuc2v37aakzyfth
 		 * WICKET-5759
@@ -1292,6 +1243,7 @@ jQuery(document).ready(function() {
 			expect(1);
 
 			var attrs = {
+				u: 'data/ajax/componentId.xml',
 				e: 'event1',
 				ep: [null, {name: "name", value: "value"}, null, null],
 				bsh: [function(attributes) {
@@ -1391,6 +1343,37 @@ jQuery(document).ready(function() {
 
 			var attrs = {
 				u: 'data/ajax/componentId.xml',
+				c: 'componentId'
+			};
+
+			execute(attrs);
+		});
+
+		asyncTest('Ajax 301 with Ajax-Location response header.', function () {
+
+			expect(2);
+
+			var redirectUrl = 'http://www.example.com/ajax/location';
+			var componentUrl = 'data/ajax/componentId.xml';
+
+			$.mockjax({
+				url: componentUrl,
+				status: 301,
+				headers: {
+					'Ajax-Location': redirectUrl
+				}
+			});
+
+			var originalRedirect = Wicket.Ajax.redirect;
+
+			Wicket.Ajax.redirect = function(location) {
+				Wicket.Ajax.redirect = originalRedirect;
+				start();
+				equal(location, redirectUrl, 'Ajax redirect in 301 response is properly handled');
+			};
+
+			var attrs = {
+				u: componentUrl,
 				c: 'componentId'
 			};
 
@@ -1529,6 +1512,28 @@ jQuery(document).ready(function() {
 						equal(metaByName("m2").attr("content"), "c2", "The old meta tag must still have the old content.");
 						equal(metaByName("m1").length, 1, "There must be one new meta tag after the contribution.");
 						equal(metaByName("m1").attr("content"), "c1", "The meta tag must have the content as requested.");
+					}
+				]
+			};
+			execute(attrs);
+		});
+		
+		asyncTest('no ajax send on component placeholder', function() {
+
+			expect(1);
+
+			var attrs = {
+				u: 'data/ajax/componentPlaceholderId.xml',
+				c: 'componentPlaceholderId',
+				bsh: [
+					function() {
+						ok(false, 'should not be sent');
+					}
+				],
+				dh: [
+					function() {
+						start();
+						ok('Done handler should be called');
 					}
 				]
 			};

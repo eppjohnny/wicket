@@ -44,6 +44,7 @@ import org.apache.wicket.feedback.FeedbackDelay;
 import org.apache.wicket.feedback.FeedbackMessage;
 import org.apache.wicket.feedback.FeedbackMessages;
 import org.apache.wicket.feedback.IFeedback;
+import org.apache.wicket.feedback.IFeedbackContributor;
 import org.apache.wicket.markup.ComponentTag;
 import org.apache.wicket.markup.IMarkupFragment;
 import org.apache.wicket.markup.Markup;
@@ -132,7 +133,7 @@ import org.slf4j.LoggerFactory;
  * unlikely for a web application and even the need to implement a listener interface directly is
  * highly discouraged. Instead, calls to listeners are routed through logic specific to the event,
  * resulting in calls to user code through other overridable methods. See {@link Form} for an
- * example of a component which listens for events via {@link IFormSubmitListener}.</li>
+ * example of a component which listens for events via {@link IRequestListener}.</li>
  * <li><b>Rendering </b>- Before a page or part of a page (in case of Ajax updates) is rendered, all
  * containing components are able to prepare for rendering via two hook methods:
  * {@link #onConfigure()} (regardless whether they are visible or not) and {@link #onBeforeRender()}
@@ -221,7 +222,9 @@ public abstract class Component
 		IHeaderContributor,
 		IHierarchical<Component>,
 		IEventSink,
-		IEventSource
+		IEventSource,
+		IMetadataContext<Serializable, Component>,
+		IFeedbackContributor
 {
 	/** Log. */
 	private static final Logger log = LoggerFactory.getLogger(Component.class);
@@ -279,13 +282,13 @@ public abstract class Component
 	public static final Action RENDER = new Action(Action.RENDER);
 
 	/** meta data for user specified markup id */
-	private static final MetaDataKey<String> MARKUP_ID_KEY = new MetaDataKey<String>()
+	private static final MetaDataKey<String> MARKUP_ID_KEY = new MetaDataKey<>()
 	{
 		private static final long serialVersionUID = 1L;
 	};
 
 	/** meta data for user specified markup id */
-	private static final MetaDataKey<FeedbackMessages> FEEDBACK_KEY = new MetaDataKey<FeedbackMessages>()
+	private static final MetaDataKey<FeedbackMessages> FEEDBACK_KEY = new MetaDataKey<>()
 	{
 		private static final long serialVersionUID = 1L;
 	};
@@ -400,7 +403,7 @@ public abstract class Component
 	 * Meta data key for line precise error logging for the moment of addition. Made package private
 	 * for access in {@link MarkupContainer} and {@link Page}
 	 */
-	static final MetaDataKey<String> ADDED_AT_KEY = new MetaDataKey<String>()
+	static final MetaDataKey<String> ADDED_AT_KEY = new MetaDataKey<>()
 	{
 		private static final long serialVersionUID = 1L;
 	};
@@ -409,7 +412,7 @@ public abstract class Component
 	 * meta data key for line precise error logging for the moment of construction. Made package
 	 * private for access in {@link Page}
 	 */
-	static final MetaDataKey<String> CONSTRUCTED_AT_KEY = new MetaDataKey<String>()
+	static final MetaDataKey<String> CONSTRUCTED_AT_KEY = new MetaDataKey<>()
 	{
 		private static final long serialVersionUID = 1L;
 	};
@@ -959,7 +962,7 @@ public abstract class Component
 	 * <pre>
 	 * final WebMarkupContainer source=new WebMarkupContainer("a") {
 	 * 	protected void onConfigure() {
-	 *    setVisible(Math.rand()>0.5f);
+	 *    setVisible(Math.rand()&gt;0.5f);
 	 *  }
 	 * };
 	 * 
@@ -1024,7 +1027,7 @@ public abstract class Component
 	}
 
 	/**
-	 * Redirects to any intercept page previously specified by a call to redirectToInterceptPage.
+	 * Redirects to any intercept page previously specified by a call to {@link #redirectToInterceptPage(Page)}.
 	 * The redirect is done by throwing an exception. If there is no intercept page no exception
 	 * will be thrown and the program flow will continue uninterrupted.
 	 * 
@@ -1065,6 +1068,7 @@ public abstract class Component
 	 * @param message
 	 *            The feedback message
 	 */
+	@Override
 	public final void debug(final Serializable message)
 	{
 		getFeedbackMessages().debug(this, message);
@@ -1197,6 +1201,7 @@ public abstract class Component
 	 * @param message
 	 *            The feedback message
 	 */
+	@Override
 	public final void error(final Serializable message)
 	{
 		getFeedbackMessages().error(this, message);
@@ -1209,6 +1214,7 @@ public abstract class Component
 	 * @param message
 	 *            The feedback message
 	 */
+	@Override
 	public final void fatal(final Serializable message)
 	{
 		getFeedbackMessages().fatal(this, message);
@@ -1377,11 +1383,13 @@ public abstract class Component
 	}
 
 	/**
+	 * THIS METHOD IS NOT PART OF THE WICKET PUBLIC API. DO NOT USE IT!
+	 * 
 	 * Get the first component tag in the associated markup
 	 * 
 	 * @return first component tag
 	 */
-	private ComponentTag getMarkupTag()
+	protected final ComponentTag getMarkupTag()
 	{
 		IMarkupFragment markup = getMarkup();
 		if (markup != null)
@@ -1503,6 +1511,7 @@ public abstract class Component
 	 * @return The metadata or null of no metadata was found for the given key
 	 * @see MetaDataKey
 	 */
+	@Override
 	public final <M extends Serializable> M getMetaData(final MetaDataKey<M> key)
 	{
 		return key.get(getMetaData());
@@ -1939,6 +1948,7 @@ public abstract class Component
 	 * @param message
 	 *            The feedback message
 	 */
+	@Override
 	public final void info(final Serializable message)
 	{
 		getFeedbackMessages().info(this, message);
@@ -1951,6 +1961,7 @@ public abstract class Component
 	 * @param message
 	 *            The feedback message
 	 */
+	@Override
 	public final void success(final Serializable message)
 	{
 		getFeedbackMessages().success(this, message);
@@ -2000,7 +2011,7 @@ public abstract class Component
 	 * Checks the security strategy if the {@link Component#RENDER} action is allowed on this
 	 * component
 	 * 
-	 * @return ture if {@link Component#RENDER} action is allowed, false otherwise
+	 * @return true if {@link Component#RENDER} action is allowed, false otherwise
 	 */
 	public final boolean isRenderAllowed()
 	{
@@ -2145,14 +2156,16 @@ public abstract class Component
 	}
 
 	/**
-	 * Redirects browser to an intermediate page such as a sign-in page. The current request's url
-	 * is saved for future use by method continueToOriginalDestination(); Only use this method when
-	 * you plan to continue to the current url at some later time; otherwise just use
-	 * setResponsePage or - when you are in a constructor or checkAccessMethod, call redirectTo.
+	 * Redirects browser to an intermediate page such as a sign-in page. The current request's URL
+	 * is saved for future use by method {@link #continueToOriginalDestination()}; only use this method when
+	 * you plan to continue to the current URL at some later time; otherwise just set a new response page.
 	 * 
 	 * @param page
 	 *            The sign in page
-	 * 
+	 *
+	 * @see #setResponsePage(Class)
+	 * @see #setResponsePage(IRequestablePage)
+	 * @see #setResponsePage(Class, PageParameters)
 	 * @see Component#continueToOriginalDestination()
 	 */
 	public final void redirectToInterceptPage(final Page page)
@@ -2305,7 +2318,7 @@ public abstract class Component
 		{
 			if (getFlag(FLAG_PLACEHOLDER))
 			{
-				renderPlaceholderTag((ComponentTag)elem, getResponse());
+				renderPlaceholderTag(((ComponentTag)elem).mutable(), getResponse());
 			}
 		}
 	}
@@ -2350,23 +2363,11 @@ public abstract class Component
 	 */
 	protected void renderPlaceholderTag(final ComponentTag tag, final Response response)
 	{
-		String ns = Strings.isEmpty(tag.getNamespace()) ? null : tag.getNamespace() + ':';
-
-		response.write("<");
-		if (ns != null)
-		{
-			response.write(ns);
-		}
-		response.write(tag.getName());
-		response.write(" id=\"");
-		response.write(getAjaxRegionMarkupId());
-		response.write("\" style=\"display:none\"></");
-		if (ns != null)
-		{
-			response.write(ns);
-		}
-		response.write(tag.getName());
-		response.write(">");
+		String name = Strings.isEmpty(tag.getNamespace()) ? tag.getName()
+			: tag.getNamespace() + ':' + tag.getName();
+		response.write(
+			String.format("<%s id=\"%s\" hidden=\"\" data-wicket-placeholder=\"\"></%s>", name,
+				getAjaxRegionMarkupId(), name));
 	}
 
 
@@ -2423,6 +2424,9 @@ public abstract class Component
 		// Get mutable copy of next tag
 		final ComponentTag openTag = markupStream.getTag();
 		final ComponentTag tag = openTag.mutable();
+
+		// call application-wide tag listeners
+		getApplication().getOnComponentTagListeners().onComponentTag(this, tag);
 
 		// Call any tag handler
 		onComponentTag(tag);
@@ -2613,7 +2617,8 @@ public abstract class Component
 			IHeaderResponse response = container.getHeaderResponse();
 
 			// Allow component to contribute
-			if (response.wasRendered(this) == false)
+			boolean wasRendered = response.wasRendered(this);
+			if (wasRendered == false)
 			{
 				StringResponse markupHeaderResponse = new StringResponse();
 				Response oldResponse = getResponse();
@@ -2635,8 +2640,6 @@ public abstract class Component
 				}
 				// Then let the component itself to contribute to the header
 				renderHead(response);
-
-				response.markRendered(this);
 			}
 
 			// Then ask all behaviors
@@ -2651,6 +2654,11 @@ public abstract class Component
 						response.markRendered(pair);
 					}
 				}
+			}
+			
+			if (wasRendered == false)
+			{
+				response.markRendered(this);
 			}
 		}
 	}
@@ -2861,6 +2869,7 @@ public abstract class Component
 	 * @throws IllegalArgumentException
 	 * @see MetaDataKey
 	 */
+	@Override
 	public final <M extends Serializable> Component setMetaData(final MetaDataKey<M> key, final M object)
 	{
 		MetaDataEntry<?>[] old = getMetaData();
@@ -3032,7 +3041,7 @@ public abstract class Component
 
 	/**
 	 * Render a placeholder tag when the component is not visible. The tag is of form:
-	 * &lt;componenttag style="display:none;" id="markupid"/&gt;. This method will also call
+	 * &lt;componenttag hidden=""" id="markupid"/&gt;. This method will also call
 	 * <code>setOutputMarkupId(true)</code>.
 	 * 
 	 * This is useful, for example, in ajax situations where the component starts out invisible and
@@ -3408,6 +3417,7 @@ public abstract class Component
 	 * @param message
 	 *            The feedback message
 	 */
+	@Override
 	public final void warn(final Serializable message)
 	{
 		getFeedbackMessages().warn(this, message);
@@ -4438,6 +4448,11 @@ public abstract class Component
 	@Override
 	public final int getBehaviorId(Behavior behavior)
 	{
+		if (behavior.isTemporary(this))
+		{
+			throw new IllegalArgumentException(
+				"Cannot get a stable id for temporary behavior " + behavior);
+		}
 		return new Behaviors(this).getBehaviorId(behavior);
 	}
 

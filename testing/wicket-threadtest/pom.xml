@@ -29,6 +29,7 @@
 	<description>Test project</description>
 
 	<properties>
+		<automatic-module-name>org.apache.wicket.thread.tests</automatic-module-name>
 		<clirr.skip>true</clirr.skip>
 	</properties>
 
@@ -82,8 +83,9 @@
 			<artifactId>jcl-over-slf4j</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-engine</artifactId>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 </project>

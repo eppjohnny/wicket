@@ -20,7 +20,7 @@ package org.apache.wicket.feedback;
  * Interface for components that present some kind of feedback to the user, normally based on the
  * feedback messages attached to various components on a given page.
  * 
- * This is tells Wicket that a component's {@link Component#beforeRender()} must be called after all non
+ * This is tells Wicket that a component's {@link org.apache.wicket.Component#beforeRender()} must be called after all non
  * feedback components have been initialized.
  * 
  * @author Jonathan Locke

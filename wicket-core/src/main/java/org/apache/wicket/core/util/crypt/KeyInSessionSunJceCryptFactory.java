@@ -39,7 +39,7 @@ import org.apache.wicket.util.lang.Args;
 public class KeyInSessionSunJceCryptFactory implements ICryptFactory
 {
 	/** metadata-key used to store crypto-key in session metadata */
-	private static final MetaDataKey<String> KEY = new MetaDataKey<String>()
+	private static final MetaDataKey<String> KEY = new MetaDataKey<>()
 	{
 		private static final long serialVersionUID = 1L;
 	};
@@ -64,7 +64,8 @@ public class KeyInSessionSunJceCryptFactory implements ICryptFactory
 	{
 		this.cryptMethod = Args.notNull(cryptMethod, "Crypt method");
 
-		if (Security.getProviders("Cipher." + cryptMethod).length == 0)
+		final Provider[] providers = Security.getProviders("Cipher." + cryptMethod);
+		if (providers == null || providers.length == 0)
 		{
 			try
 			{

@@ -16,6 +16,7 @@
  */
 package org.apache.wicket.examples.websocket;
 
+import org.apache.wicket.examples.WicketExampleApplication;
 import org.apache.wicket.examples.websocket.charts.ChartWebSocketResource;
 import org.apache.wicket.protocol.http.WebApplication;
 import org.apache.wicket.protocol.https.HttpsConfig;
@@ -29,7 +30,7 @@ import java.util.concurrent.ScheduledExecutorService;
  * Application object for your web application.
  * If you want to run this application without deploying, run the com.wicketinaction.StartNativeWebSocketExample class.
  */
-public class JSR356Application extends WebApplication
+public class JSR356Application extends WicketExampleApplication
 {
     private ScheduledExecutorService scheduledExecutorService;
 
@@ -44,12 +45,13 @@ public class JSR356Application extends WebApplication
 	{
 		super.init();
 
-        scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        scheduledExecutorService = Executors.newScheduledThreadPool(5);
 
 		setRootRequestMapper(new HttpsMapper(getRootRequestMapper(), new HttpsConfig(8080, 8443)));
 
 		mountPage("/behavior", WebSocketBehaviorDemoPage.class);
 		mountPage("/resource", WebSocketResourceDemoPage.class);
+		mountPage("/resource-multi-tab", WebSocketMultiTabResourceDemoPage.class);
 
 		getSharedResources().add(ChartWebSocketResource.NAME, new ChartWebSocketResource());
 
@@ -61,6 +63,10 @@ public class JSR356Application extends WebApplication
 			webSocketSettings.setPort(8000);
 			webSocketSettings.setSecurePort(8443);
 		}
+
+		// The websocket example loads JS from ajax.googleapis.com, which is not allowed by the CSP.
+		// This now serves as an example on how to disable CSP
+		getCspSettings().blocking().disabled();
 	}
 
     @Override

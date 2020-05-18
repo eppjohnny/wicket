@@ -22,15 +22,24 @@ import org.apache.wicket.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 /**
- * Default implementation of IChainingModel
- *
+ * This model and its subclasses support chaining of IModels. {@code getObject()} of 
+ * {@code ChainingModel} returns its object like this:
+ * 
+ * <pre>
+ * if ( object instanceof IModel) { return ((IModel)object).getObject()}
+ * else return object;
+ * </pre>
+ * 
+ * ChainingModel also detaches the inner model on detach.
+ * 
  * @param <T>
  *            The Model object type
- *
+ * 
  * @see CompoundPropertyModel
  * @see AbstractPropertyModel
- *
+ * 
  * @since 6.0.0
  */
 public class ChainingModel<T> implements IModel<T>
@@ -100,7 +109,7 @@ public class ChainingModel<T> implements IModel<T>
 	/**
 	 * @return The target - object or model
 	 */
-	protected final Object getTarget()
+	public final Object getTarget()
 	{
 		return target;
 	}
@@ -114,6 +123,18 @@ public class ChainingModel<T> implements IModel<T>
 		this.target = modelObject;
 		return this;
 	}
+	
+	/**
+	 * @return The target - if it is a model, null otherwise
+	 */
+	public IModel<?> getChainedModel()
+	{
+		if (target instanceof IModel)
+		{
+			return (IModel<?>)target;
+		}
+		return null;
+	}
 
 	@Override
 	public String toString()
@@ -122,5 +143,23 @@ public class ChainingModel<T> implements IModel<T>
 		sb.append(getClass().getName()).append(']');
 		sb.append(":nestedModel=[").append(target).append(']');
 		return sb.toString();
+	}
+
+	/**
+	 * @return The innermost model or the object if the target is not a model
+	 */
+	public final Object getInnermostModelOrObject()
+	{
+		Object object = getTarget();
+		while (object instanceof IModel)
+		{
+			Object tmp = ((IModel<?>)object).getObject();
+			if (tmp == object)
+			{
+				break;
+			}
+			object = tmp;
+		}
+		return object;
 	}
 }

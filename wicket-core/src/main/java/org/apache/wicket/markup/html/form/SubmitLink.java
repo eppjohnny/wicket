@@ -16,10 +16,10 @@
  */
 package org.apache.wicket.markup.html.form;
 
-import org.apache.wicket.IRequestListener;
 import org.apache.wicket.markup.ComponentTag;
+import org.apache.wicket.markup.head.IHeaderResponse;
+import org.apache.wicket.markup.head.OnEventHeaderItem;
 import org.apache.wicket.model.IModel;
-import org.apache.wicket.request.mapper.parameter.PageParameters;
 
 /**
  * A link which can be used exactly like a Button to submit a Form. The onclick of the link will use
@@ -73,7 +73,7 @@ import org.apache.wicket.request.mapper.parameter.PageParameters;
  * @author Eelco Hillenius
  * 
  */
-public class SubmitLink extends AbstractSubmitLink implements IRequestListener
+public class SubmitLink extends AbstractSubmitLink
 {
 	private static final long serialVersionUID = 1L;
 
@@ -167,29 +167,38 @@ public class SubmitLink extends AbstractSubmitLink implements IRequestListener
 			if (tag.getName().equalsIgnoreCase("a") || tag.getName().equalsIgnoreCase("link")
 				|| tag.getName().equalsIgnoreCase("area"))
 			{
-				tag.put("href", "javascript:;");
+				tag.put("href", "#");
 			}
 			else if (tag.getName().equalsIgnoreCase("button"))
 			{
 				// WICKET-5597 prevent default submit
 				tag.put("type", "button");
 			}
-
-			tag.put("onclick", getTriggerJavaScript());
 		}
 		else
 		{
 			disableLink(tag);
 		}
 	}
+	
+	@Override
+	public void renderHead(IHeaderResponse response)
+	{
+		super.renderHead(response);
+
+		if (isEnabledInHierarchy())
+		{
+			response.render(OnEventHeaderItem.forComponent(this, "click", getTriggerJavaScript()));
+		}
+	}
 
 	/**
-	 * Controls whether or not clicking on this link will invoke form's javascript onsubmit handler.
-	 * True by default.
+	 * Controls whether or not clicking on this link will trigger a javascript submit event, firing
+	 * any submit handler added to the form. True by default.
 	 * 
-	 * @return true if form's javascript onsubmit handler should be invoked, false otherwise
+	 * @return true if form's javascript submit handlers should be invoked, false otherwise
 	 */
-	protected boolean shouldInvokeJavaScriptFormOnsubmit()
+	protected boolean shouldTriggerJavaScriptSubmitEvent()
 	{
 		return true;
 	}
@@ -208,14 +217,7 @@ public class SubmitLink extends AbstractSubmitLink implements IRequestListener
 			Form<?> root = getForm().getRootForm();
 
 			StringBuilder script = new StringBuilder();
-			if (shouldInvokeJavaScriptFormOnsubmit())
-			{
-				script.append(String.format("var ff=document.getElementById('%s');", getForm().getMarkupId()));
-				script.append("if (typeof ff.onsubmit === 'function' && ff.onsubmit() == false) return false;");
-			}
-			
-			CharSequence url = urlForListener(new PageParameters());
-			script.append(root.getJsForListenerUrl(url));
+			script.append(root.getJsForSubmitter(this, shouldTriggerJavaScriptSubmitEvent()));
 			script.append("return false;");
 			
 			return script;
@@ -224,12 +226,6 @@ public class SubmitLink extends AbstractSubmitLink implements IRequestListener
 		{
 			return null;
 		}
-	}
-
-	@Override
-	public void onRequest()
-	{
-		getForm().onFormSubmitted(this);
 	}
 
 	/**

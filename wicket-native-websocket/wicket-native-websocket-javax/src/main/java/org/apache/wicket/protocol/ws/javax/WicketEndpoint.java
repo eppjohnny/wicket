@@ -16,6 +16,8 @@
  */
 package org.apache.wicket.protocol.ws.javax;
 
+import java.io.EOFException;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -74,22 +76,43 @@ public class WicketEndpoint extends Endpoint
 	{
 		super.onClose(session, closeReason);
 
+		final int closeCode = closeReason.getCloseCode().getCode();
+		final String reasonPhrase = closeReason.getReasonPhrase();
+
+		LOG.debug("Web Socket connection with id '{}' has been closed with code '{}' and reason: {}",
+				session.getId(), closeCode, reasonPhrase);
+
 		if (isApplicationAlive())
 		{
-			javaxWebSocketProcessor.onClose(closeReason.getCloseCode().getCode(), closeReason.getReasonPhrase());
+			javaxWebSocketProcessor.onClose(closeCode, reasonPhrase);
 		}
 	}
 
 	@Override
 	public void onError(Session session, Throwable t)
 	{
-		LOG.error("An error occurred in web socket connection with id : " + session.getId(), t);
+		if (isIgnorableError(t))
+		{
+			LOG.debug("An error occurred in web socket connection with id : {}", session.getId(), t);
+		}
+		else
+		{
+			LOG.error("An error occurred in web socket connection with id : {}", session.getId(), t);
+		}
+
 		super.onError(session, t);
 
 		if (isApplicationAlive())
 		{
 			javaxWebSocketProcessor.onError(t);
 		}
+	}
+
+	private boolean isIgnorableError(Throwable t)
+	{
+		return
+			t instanceof EOFException ||
+		    (t instanceof IOException && "Broken pipe".equals(t.getMessage()));
 	}
 
 	private boolean isApplicationAlive() {

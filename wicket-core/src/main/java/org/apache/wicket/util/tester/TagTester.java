@@ -21,6 +21,7 @@ import static org.apache.wicket.markup.parser.filter.HtmlHandler.requiresCloseTa
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Stack;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -304,7 +305,7 @@ public class TagTester
 			int endPos = closeTag.getPos();
 			String markup = parser.getInput(startPos, endPos).toString();
 
-			childTagTester = createTagByAttribute(markup, tagName);
+			childTagTester = createTagByName(markup, tagName);
 		}
 
 		return childTagTester;
@@ -392,23 +393,6 @@ public class TagTester
 	}
 
 	/**
-	 * Static factory method for creating a <code>TagTester</code> based on a tag name. Please note
-	 * that it will return the first tag which matches the criteria.
-	 *
-	 * @param markup
-	 *            the markup to look for the tag to create the <code>TagTester</code> from the value
-	 *            which the attribute must have
-	 * @return the <code>TagTester</code> which matches the tag by name in the markup
-	 * 
-	 * @deprecated use {@link #createTagByName(String, String)} instead
-	 */
-	@Deprecated
-	public static TagTester createTagByAttribute(String markup, String tagName)
-	{
-		return createTagByName(markup, tagName);
-	}
-
-	/**
 	 * Static factory method for creating a <code>TagTester</code> based on a tag found by an
 	 * attribute with a specific value. Please note that it will return the first tag which matches
 	 * the criteria. It's therefore good for attributes such as "id" or "wicket:id", but only if
@@ -431,27 +415,6 @@ public class TagTester
 			return null;
 		}
 		return tester.get(0);
-	}
-
-	/**
-	 * Static factory method for creating a <code>TagTester</code> based on a tag found by an
-	 * attribute with a specific value. Please note that it will return the first tag which matches
-	 * the criteria. It's therefore good for attributes suck as "id" or "wicket:id", but only if
-	 * "wicket:id" is unique in the specified markup.
-	 * 
-	 * @param markup
-	 *            the markup to look for the tag to create the <code>TagTester</code> from
-	 * @param attribute
-	 *            the attribute which should be on the tag in the markup
-	 * @param value
-	 *            the value which the attribute must have
-	 * @return the <code>TagTester</code> which matches the tag in the markup, that has the given
-	 *         value on the given attribute
-	 */
-	@Deprecated
-	public static TagTester createTagsByAttribute(String markup, String attribute, String value)
-	{
-		return createTagByAttribute(markup, attribute, value);
 	}
 
 	/**
@@ -478,10 +441,8 @@ public class TagTester
 	}
 
 	/**
-	 * Static factory method for creating a <code>TagTester</code> based on a tag found by an
-	 * attribute with a specific value. Please note that it will return the first tag which matches
-	 * the criteria. It's therefore good for attributes suck as "id" or "wicket:id", but only if
-	 * "wicket:id" is unique in the specified markup.
+	 * Static factory method for creating a <code>TagTester</code> based on tags found by an
+	 * attribute with a specific value.
 	 * 
 	 * @param markup
 	 *            the markup to look for the tag to create the <code>TagTester</code> from
@@ -491,16 +452,16 @@ public class TagTester
 	 *            the value which the attribute must have
 	 * @param stopAfterFirst
 	 *            if true search will stop after the first match
-	 * @return the <code>TagTester</code> which matches the tag in the markup, that has the given
+	 * @return list of <code>TagTester</code>s matching the tags in the markup, that have the given
 	 *         value on the given attribute
 	 */
 	public static List<TagTester> createTagsByAttribute(String markup, String attribute, String value, boolean stopAfterFirst)
 	{
-		if (Strings.isEmpty(attribute) || Strings.isEmpty(value)) {
+		if (Strings.isEmpty(attribute)) {
 			return Collections.emptyList();
 		}
 		
-		return createTags(markup, xmlTag -> value.equals(xmlTag.getAttributes().get(attribute)), stopAfterFirst);
+		return createTags(markup, xmlTag -> Objects.equals(value, xmlTag.getAttributes().get(attribute)), stopAfterFirst);
 	}
 	
 	public static List<TagTester> createTags(String markup, Function<XmlTag, Boolean> accept, boolean stopAfterFirst)

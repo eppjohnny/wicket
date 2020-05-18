@@ -17,6 +17,9 @@
 package org.apache.wicket.mock;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.sql.Time;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,7 +34,6 @@ import org.apache.wicket.request.Url;
 import org.apache.wicket.request.Url.QueryParameter;
 import org.apache.wicket.request.UrlUtils;
 import org.apache.wicket.request.http.WebRequest;
-import org.apache.wicket.util.time.Time;
 
 /**
  * Mutable mock {@link WebRequest}.
@@ -138,7 +140,7 @@ public class MockWebRequest extends WebRequest
 
 
 	@Override
-	public Time getDateHeader(String name)
+	public Instant getDateHeader(String name)
 	{
 		List<Object> dates = headers.get(name);
 		if (dates == null || dates.isEmpty())
@@ -148,12 +150,12 @@ public class MockWebRequest extends WebRequest
 
 		Object date = dates.get(0);
 
-		if (date instanceof Time == false)
+		if (date instanceof Instant == false)
 		{
 			throw new WicketRuntimeException("Date header with name '" + name +
-				"' is not a valid Time.");
+				"' is not a valid Instant.");
 		}
-		return (Time)date;
+		return (Instant)date;
 	}
 
 	private void addHeaderObject(String name, Object value)
@@ -275,7 +277,7 @@ public class MockWebRequest extends WebRequest
 	@Override
 	public Charset getCharset()
 	{
-		return Charset.forName("UTF-8");
+		return StandardCharsets.UTF_8;
 	}
 
 	@Override

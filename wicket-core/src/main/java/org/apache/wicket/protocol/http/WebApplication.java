@@ -18,14 +18,17 @@ package org.apache.wicket.protocol.http;
 
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Locale;
 import java.util.function.Function;
+
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+
 import org.apache.wicket.Application;
 import org.apache.wicket.Page;
 import org.apache.wicket.RuntimeConfigurationType;
@@ -40,6 +43,8 @@ import org.apache.wicket.core.request.mapper.PackageMapper;
 import org.apache.wicket.core.request.mapper.ResourceMapper;
 import org.apache.wicket.core.util.file.WebApplicationPath;
 import org.apache.wicket.core.util.resource.ClassPathResourceFinder;
+import org.apache.wicket.csp.CSPHeaderConfiguration;
+import org.apache.wicket.csp.ContentSecurityPolicySettings;
 import org.apache.wicket.markup.MarkupType;
 import org.apache.wicket.markup.head.CssHeaderItem;
 import org.apache.wicket.markup.head.JavaScriptHeaderItem;
@@ -77,7 +82,6 @@ import org.apache.wicket.util.file.Path;
 import org.apache.wicket.util.lang.Args;
 import org.apache.wicket.util.lang.PackageName;
 import org.apache.wicket.util.string.Strings;
-import org.apache.wicket.util.time.Duration;
 import org.apache.wicket.util.watch.IModificationWatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -144,6 +148,8 @@ public abstract class WebApplication extends Application
 	 * runtime.
 	 */
 	private RuntimeConfigurationType configurationType;
+	
+	private ContentSecurityPolicySettings cspSettings;
 
 	/**
 	 * Covariant override for easy getting the current {@link WebApplication} without having to cast
@@ -744,6 +750,16 @@ public abstract class WebApplication extends Application
 
 		getResourceSettings().setFileCleaner(new FileCleaner());
 
+		setPageRendererProvider(WebPageRenderer::new);
+		setSessionStoreProvider(HttpSessionStore::new);
+		setAjaxRequestTargetProvider(AjaxRequestHandler::new);
+
+		getAjaxRequestTargetListeners().add(new AjaxEnclosureListener());
+		
+		getCspSettings().enforce(this);
+		
+		// Configure the app.
+		configure();
 		if (getConfigurationType() == RuntimeConfigurationType.DEVELOPMENT)
 		{
 			// Add optional sourceFolder for resources.
@@ -752,15 +768,9 @@ public abstract class WebApplication extends Application
 			{
 				getResourceSettings().getResourceFinders().add(new Path(resourceFolder));
 			}
+			getCspSettings().blocking().reportBack();
 		}
-		setPageRendererProvider(WebPageRenderer::new);
-		setSessionStoreProvider(HttpSessionStore::new);
-		setAjaxRequestTargetProvider(AjaxRequestHandler::new);
-
-		getAjaxRequestTargetListeners().add(new AjaxEnclosureListener());
-
-		// Configure the app.
-		configure();
+		getCspSettings().blocking().strict();
 	}
 
 	/**
@@ -830,7 +840,7 @@ public abstract class WebApplication extends Application
 			{
 				try
 				{
-					configurationType = RuntimeConfigurationType.valueOf(result.toUpperCase());
+					configurationType = RuntimeConfigurationType.valueOf(result.toUpperCase(Locale.ROOT));
 				}
 				catch (IllegalArgumentException e)
 				{
@@ -963,7 +973,7 @@ public abstract class WebApplication extends Application
 	 * is no need to configure these parameters externally.
 	 */
 	private final StoredResponsesMap storedResponses = new StoredResponsesMap(1000,
-		Duration.seconds(60));
+		Duration.ofSeconds(60));
 
 	/**
 	 * 
@@ -1070,19 +1080,35 @@ public abstract class WebApplication extends Application
 		}
 		return filterFactoryManager;
 	}
+	
+	/**
+	 * Builds the {@link ContentSecurityPolicySettings} to be used for this application. Override
+	 * this method to provider your own implementation.
+	 * 
+	 * @return The newly created CSP settings.
+	 */
+	protected ContentSecurityPolicySettings newCspSettings()
+	{
+		return new ContentSecurityPolicySettings(this);
+	}
 
 	/**
-	 * If true, auto label css classes such as {@code error} and {@code required} will be updated
-	 * after form component processing during an ajax request. This allows auto labels to correctly
-	 * reflect the state of the form component even if they are not part of the ajax markup update.
+	 * Returns the {@link ContentSecurityPolicySettings} for this application. See
+	 * {@link ContentSecurityPolicySettings} and {@link CSPHeaderConfiguration} for instructions on
+	 * configuring the CSP for your specific needs.
 	 * 
-	 * TODO in wicket-7 this should move into a settings object. cannot move in 6.x because it
-	 * requires a change to a setting interface.
-	 * 
-	 * @return {@code true} iff enabled
+	 * @return The {@link ContentSecurityPolicySettings} for this application.
+	 * @see ContentSecurityPolicySettings
+	 * @see CSPHeaderConfiguration
 	 */
-	public boolean getUpdateAutoLabelsOnAjaxRequests()
+	public ContentSecurityPolicySettings getCspSettings()
 	{
-		return true;
+		checkSettingsAvailable();
+
+		if (cspSettings == null)
+		{
+			cspSettings = newCspSettings();
+		}
+		return cspSettings;
 	}
 }

@@ -17,6 +17,7 @@
 package org.apache.wicket.markup.parser.filter;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.wicket.Component;
 import org.apache.wicket.MarkupContainer;
@@ -35,7 +36,7 @@ import org.apache.wicket.util.resource.StringResourceStream;
  * https://issues.apache.org/jira/browse/WICKET-4494
  * @see HtmlHandlerTest
  */
-public class CustomMarkupLabel
+class CustomMarkupLabel
 		extends MarkupContainer
 		implements IMarkupCacheKeyProvider, IMarkupResourceStreamProvider
 {
@@ -57,7 +58,7 @@ public class CustomMarkupLabel
 	{
 		// the markup is loaded from database in our real application
 		StringResourceStream res = new StringResourceStream(SAMPLE_MARKUP);
-		res.setCharset(Charset.forName("UTF-8"));
+		res.setCharset(StandardCharsets.UTF_8);
 		return res;
 	}
 
@@ -75,7 +76,7 @@ public class CustomMarkupLabel
 	{
 		private final CustomMarkupLabel markupProvider;
 
-		public MyMarkupSourcingStrategy(final CustomMarkupLabel markupProvider)
+		MyMarkupSourcingStrategy(final CustomMarkupLabel markupProvider)
 		{
 			this.markupProvider = markupProvider;
 		}

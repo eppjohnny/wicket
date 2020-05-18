@@ -128,9 +128,6 @@
 						}
 						render(true, false);
 
-						if (Wicket.Browser.isSafari()) {
-							return jqEvent.stopPropagation();
-						}
 						break;
 					case KEY_DOWN:
 						if (selected < elementCount-1) {
@@ -144,9 +141,6 @@
 						} else {
 							render(true, false);
 							showAutoComplete();
-						}
-						if (Wicket.Browser.isSafari()) {
-							return jqEvent.stopPropagation();
 						}
 						break;
 					case KEY_ESC:
@@ -192,7 +186,7 @@
 				}
 			});
 
-			Wicket.Event.add(obj, 'inputchange', function (jqEvent) {
+			Wicket.Event.add(obj, 'input change', function (jqEvent) {
 				var kc = Wicket.Event.keyCode(jqEvent);
 				switch(kc) {
 					case KEY_TAB:
@@ -450,7 +444,7 @@
 			
 			if (triggerChangeOnHide) {
 				var input = Wicket.$(ajaxAttributes.c);
-				jQuery(input).triggerHandler('change');
+				jQuery(input).trigger('change');
 				triggerChangeOnHide = false;
 			}
 		}
@@ -674,14 +668,6 @@
 
 			Wicket.Log.info("Response processed successfully.");
 			hideIndicator();
-
-			// hack for a focus issue in IE, WICKET-2279
-			if (Wicket.Browser.isIELessThan11()) {
-				var range = document.selection.createRange();
-				if (range !== null) {
-					range.select();
-				}
-			}
 		}
 
 		function scheduleEmptyCheck() {

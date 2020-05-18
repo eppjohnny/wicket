@@ -16,26 +16,27 @@
  */
 package org.apache.wicket.page;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
 import javax.servlet.http.Cookie;
 
+import org.apache.wicket.Application;
 import org.apache.wicket.Component;
 import org.apache.wicket.Page;
+import org.apache.wicket.behavior.Behavior;
 import org.apache.wicket.feedback.FeedbackDelay;
 import org.apache.wicket.markup.head.HeaderItem;
 import org.apache.wicket.markup.head.IHeaderResponse;
 import org.apache.wicket.markup.head.IWrappedHeaderItem;
+import org.apache.wicket.markup.head.JavaScriptHeaderItem;
 import org.apache.wicket.markup.head.OnDomReadyHeaderItem;
 import org.apache.wicket.markup.head.OnEventHeaderItem;
 import org.apache.wicket.markup.head.OnLoadHeaderItem;
-import org.apache.wicket.markup.head.PriorityHeaderItem;
 import org.apache.wicket.markup.head.internal.HeaderResponse;
 import org.apache.wicket.markup.html.internal.HtmlHeaderContainer;
 import org.apache.wicket.markup.parser.filter.HtmlHeaderSectionHandler;
@@ -46,25 +47,23 @@ import org.apache.wicket.request.IRequestCycle;
 import org.apache.wicket.request.Response;
 import org.apache.wicket.request.cycle.RequestCycle;
 import org.apache.wicket.request.http.WebResponse;
+import org.apache.wicket.response.StringResponse;
 import org.apache.wicket.util.lang.Args;
-import org.apache.wicket.util.lang.Classes;
 import org.apache.wicket.util.lang.Generics;
 import org.apache.wicket.util.string.AppendingStringBuffer;
-import org.apache.wicket.util.time.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A partial update of a page that collects components and header contributions to be written to the client in a specific
- * String-based format (XML, JSON, * ...).
+ * A partial update of a page that collects components and header contributions to be written to the
+ * client in a specific String-based format (XML, JSON, * ...).
  * <p>
  * The elements of such response are:
  * <ul>
- * <li>priority-evaluate - an item of the prepend JavaScripts</li>
  * <li>component - the markup of the updated component</li>
- * <li>evaluate - an item of the onDomReady and append JavaScripts</li>
- * <li>header-contribution - all HeaderItems which have been contributed in
- * components' and their behaviors' #renderHead(Component, IHeaderResponse)</li>
+ * <li>header-contribution - all HeaderItems which have been contributed in any{@link Component#renderHead(IHeaderResponse)},
+ * {@link Behavior#renderHead(Component, IHeaderResponse)} or JavaScript explicitly added via {@link #appendJavaScript(CharSequence)}
+ * or {@link #prependJavaScript(CharSequence)}</li>
  * </ul>
  */
 public abstract class PartialPageUpdate
@@ -93,7 +92,7 @@ public abstract class PartialPageUpdate
 	/**
 	 * The component instances that will be rendered/replaced.
 	 */
-	protected final Map<String, Component> markupIdToComponent = new LinkedHashMap<String, Component>();
+	protected final Map<String, Component> markupIdToComponent = new LinkedHashMap<>();
 
 	/**
 	 * A flag that indicates that components cannot be added anymore.
@@ -115,7 +114,7 @@ public abstract class PartialPageUpdate
 
 	protected HtmlHeaderContainer header = null;
 	
-	private Component originalHeaderContainer  = null;
+	private Component originalHeaderContainer;
 
 	// whether a header contribution is being rendered
 	private boolean headerRendering = false;
@@ -158,21 +157,21 @@ public abstract class PartialPageUpdate
 
 			onBeforeRespond(response);
 
+			// queue up prepend javascripts. unlike other steps these are executed out of order so that
+			// components can contribute them from inside their onbeforerender methods.
+			writeEvaluations(response, prependJavaScripts);
+
 			// process added components
 			writeComponents(response, encoding);
 
 			onAfterRespond(response);
-
-			// queue up prepend javascripts. unlike other steps these are executed out of order so that
-			// components can contribute them from inside their onbeforerender methods.
-			writePriorityEvaluations(response, prependJavaScripts);
 
 			// execute the dom ready javascripts as first javascripts
 			// after component replacement
 			List<CharSequence> evaluationScripts = new ArrayList<>();
 			evaluationScripts.addAll(domReadyJavaScripts);
 			evaluationScripts.addAll(appendJavaScripts);
-			writeNormalEvaluations(response, evaluationScripts);
+			writeEvaluations(response, evaluationScripts);
 
 			writeFooter(response, encoding);
 		} finally {
@@ -212,19 +211,36 @@ public abstract class PartialPageUpdate
 	 *
 	 * @param response
 	 *      the response to write to
-	 * @param js
-	 *      the JavaScript to evaluate
+	 * @param scripts
+	 *      the JavaScripts to evaluate
 	 */
-	protected abstract void writePriorityEvaluations(Response response, Collection<CharSequence> js);
+	protected void writeEvaluations(final Response response, Collection<CharSequence> scripts)
+	{
+		if (!scripts.isEmpty())
+		{
+			StringBuilder combinedScript = new StringBuilder(1024);
+			for (CharSequence script : scripts)
+			{
+				combinedScript.append("(function(){").append(script).append("})();");
+			}
 
-	/**
-	 *
-	 * @param response
-	 *      the response to write to
-	 * @param js
-	 *      the JavaScript to evaluate
-	 */
-	protected abstract void writeNormalEvaluations(Response response, Collection<CharSequence> js);
+			StringResponse stringResponse = new StringResponse();
+			IHeaderResponse decoratedHeaderResponse = Application.get().decorateHeaderResponse(new HeaderResponse()
+			{
+				@Override
+				protected Response getRealResponse()
+				{
+					return stringResponse;
+				}
+			});
+			
+			decoratedHeaderResponse.render(JavaScriptHeaderItem.forScript(combinedScript, null));
+			decoratedHeaderResponse.close();
+			
+			writeHeaderContribution(response, stringResponse.getBuffer());
+		}
+	}
+
 
 	/**
 	 * Processes components added to the target. This involves attaching components, rendering
@@ -245,11 +261,8 @@ public abstract class PartialPageUpdate
 		try (FeedbackDelay delay = new FeedbackDelay(RequestCycle.get())) {
 			for (Component component : markupIdToComponent.values())
 			{
-				if (!containsAncestorFor(component))
-				{
-					if (prepareComponent(component)) {
-						toBeWritten.add(component);
-					}
+				if (!containsAncestorFor(component) && prepareComponent(component)) {
+					toBeWritten.add(component);
 				}
 			}
 
@@ -284,7 +297,7 @@ public abstract class PartialPageUpdate
 			cycle.setResponse(oldResponse);
 
 			// write the XML tags and we're done
-			writeHeaderContribution(response);
+			writeHeaderContribution(response, headerBuffer.getContents());
 			headerRendering = false;
 		}
 	}
@@ -294,11 +307,11 @@ public abstract class PartialPageUpdate
 	 *
 	 * @param component
 	 *      the component to prepare
-	 * @return wether the component was prepared
+	 * @return whether the component was prepared
 	 */
 	protected boolean prepareComponent(Component component)
 	{
-		if (component.getRenderBodyOnly() == true)
+		if (component.getRenderBodyOnly())
 		{
 			throw new IllegalStateException(
 					"A partial update is not possible for a component that has renderBodyOnly enabled. Component: " +
@@ -308,8 +321,8 @@ public abstract class PartialPageUpdate
 		component.setOutputMarkupId(true);
 
 		// Initialize temporary variables
-		final Page page = component.findParent(Page.class);
-		if (page == null)
+		final Page parentPage = component.findParent(Page.class);
+		if (parentPage == null)
 		{
 			// dont throw an exception but just ignore this component, somehow
 			// it got removed from the page.
@@ -356,12 +369,12 @@ public abstract class PartialPageUpdate
 	protected abstract void writeHeader(Response response, String encoding);
 
 	/**
-	 * Writes header contribution (<link/> or <script/>) to the response.
+	 * Writes header contribution (&lt;link/&gt; or &lt;script/&gt;) to the response.
 	 *
 	 * @param response
 	 *      the response to write to
 	 */
-	protected abstract void writeHeaderContribution(Response response);
+	protected abstract void writeHeaderContribution(Response response, CharSequence contents);
 
 	@Override
 	public boolean equals(Object o)
@@ -424,7 +437,6 @@ public abstract class PartialPageUpdate
 	 *      thrown when components no more can be added for replacement.
 	 */
 	public final void add(final Component component, final String markupId)
-			throws IllegalArgumentException, IllegalStateException
 	{
 		Args.notEmpty(markupId, "markupId");
 		Args.notNull(component, "component");
@@ -433,19 +445,39 @@ public abstract class PartialPageUpdate
 		{
 			if (component != page)
 			{
-				throw new IllegalArgumentException("component cannot be a page");
+				throw new IllegalArgumentException("Cannot add another page");
 			}
 		}
-		else if (component instanceof AbstractRepeater)
+		else
 		{
-			throw new IllegalArgumentException(
-					"Component " +
-							component.getClass().getName() +
-							" has been added to a partial page update. This component is a repeater and cannot be repainted directly. " +
-							"Instead add its parent or another markup container higher in the hierarchy.");
+			Page pageOfComponent = component.findParent(Page.class);
+			if (pageOfComponent == null) 
+			{
+				// no longer on page - log the error but don't block the user of the application
+				// (which was the behavior in Wicket <= 7).
+				LOG.warn("Component '{}' not cannot be updated because it was already removed from page", component);
+				return;
+			}
+			else if (pageOfComponent != page) 
+			{
+				// on another page
+				throw new IllegalArgumentException("Component " + component.toString() + " cannot be updated because it is on another page.");
+			}
+
+			if (component instanceof AbstractRepeater)
+			{
+				throw new IllegalArgumentException(
+						"Component " +
+								component.getClass().getName() +
+								" is a repeater and cannot be added to a partial page update directly. " +
+								"Instead add its parent or another markup container higher in the hierarchy.");
+			}
 		}
 
-		assertComponentsNotFrozen();
+		if (componentsFrozen)
+		{
+			throw new IllegalStateException("A partial update of the page is being rendered, component " + component.toString() + " can no longer be added");
+		}
 
 		component.setMarkupId(markupId);
 		markupIdToComponent.put(markupId, component);
@@ -467,13 +499,9 @@ public abstract class PartialPageUpdate
 	 */
 	public void detach(IRequestCycle requestCycle)
 	{
-		Iterator<Component> iterator = markupIdToComponent.values().iterator();
-		while (iterator.hasNext())
-		{
-			final Component component = iterator.next();
+		for (final Component component : markupIdToComponent.values()) {
 			final Page parentPage = component.findParent(Page.class);
-			if (parentPage != null)
-			{
+			if (parentPage != null) {
 				parentPage.detach();
 				break;
 			}
@@ -506,7 +534,7 @@ public abstract class PartialPageUpdate
 	 */
 	public boolean containsPage()
 	{
-		return markupIdToComponent.values().contains(page);
+		return markupIdToComponent.containsValue(page);
 	}
 
 	/**
@@ -558,7 +586,7 @@ public abstract class PartialPageUpdate
 			requestCycle.setResponse(oldResponse);
 		}
 
-		writeHeaderContribution(response);
+		writeHeaderContribution(response, headerBuffer.getContents());
 		headerRendering = false;
 	}
 
@@ -595,7 +623,7 @@ public abstract class PartialPageUpdate
 		/**
 		 * Constructor.
 		 *
-		 * @param update
+		 * @param pageUpdate
 		 *      the partial page update
 		 */
 		public PartialHtmlHeaderContainer(PartialPageUpdate pageUpdate)
@@ -630,13 +658,8 @@ public abstract class PartialPageUpdate
 		@Override
 		public void render(HeaderItem item)
 		{
-			PriorityHeaderItem priorityHeaderItem = null;
 			while (item instanceof IWrappedHeaderItem)
 			{
-				if (item instanceof PriorityHeaderItem)
-				{
-					priorityHeaderItem = (PriorityHeaderItem) item;
-				}
 				item = ((IWrappedHeaderItem) item).getWrapped();
 			}
 
@@ -660,14 +683,7 @@ public abstract class PartialPageUpdate
 			{
 				if (!wasItemRendered(item))
 				{
-					if (priorityHeaderItem != null)
-					{
-						PartialPageUpdate.this.domReadyJavaScripts.add(0, ((OnDomReadyHeaderItem)item).getJavaScript());
-					}
-					else
-					{
-						PartialPageUpdate.this.domReadyJavaScripts.add(((OnDomReadyHeaderItem)item).getJavaScript());
-					}
+					PartialPageUpdate.this.domReadyJavaScripts.add(((OnDomReadyHeaderItem)item).getJavaScript());
 					markItemRendered(item);
 				}
 			}
@@ -780,6 +796,12 @@ public abstract class PartialPageUpdate
 		}
 
 		@Override
+		public boolean isHeaderSupported()
+		{
+			return originalResponse.isHeaderSupported();
+		}
+
+		@Override
 		public void setHeader(String name, String value)
 		{
 			originalResponse.setHeader(name, value);
@@ -792,7 +814,7 @@ public abstract class PartialPageUpdate
 		}
 
 		@Override
-		public void setDateHeader(String name, Time date)
+		public void setDateHeader(String name, Instant date)
 		{
 			originalResponse.setDateHeader(name, date);
 		}
@@ -843,20 +865,6 @@ public abstract class PartialPageUpdate
 		public void flush()
 		{
 			originalResponse.flush();
-		}
-	}
-
-	private void assertComponentsNotFrozen()
-	{
-		assertNotFrozen(componentsFrozen, Component.class);
-	}
-
-	private void assertNotFrozen(boolean frozen, Class<?> clazz)
-	{
-		if (frozen)
-		{
-			throw new IllegalStateException(Classes.simpleName(clazz) + "s can no " +
-					" longer be added");
 		}
 	}
 }

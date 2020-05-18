@@ -16,6 +16,7 @@
  */
 package org.apache.wicket.settings;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -56,7 +57,6 @@ import org.apache.wicket.util.file.IResourceFinder;
 import org.apache.wicket.util.lang.Args;
 import org.apache.wicket.util.lang.Generics;
 import org.apache.wicket.util.resource.IResourceStream;
-import org.apache.wicket.util.time.Duration;
 import org.apache.wicket.util.watch.IModificationWatcher;
 import org.apache.wicket.util.watch.ModificationWatcher;
 
@@ -121,7 +121,7 @@ public class ResourceSettings implements IPropertiesFactoryContext
 	private org.apache.wicket.resource.IPropertiesFactory propertiesFactory;
 
 	/** Filesystem Path to search for resources */
-	private List<IResourceFinder> resourceFinders = new ArrayList<IResourceFinder>();
+	private List<IResourceFinder> resourceFinders = new ArrayList<>();
 
 	/** Frequency at which files should be polled */
 	private Duration resourcePollFrequency = null;
@@ -172,7 +172,7 @@ public class ResourceSettings implements IPropertiesFactoryContext
 		false);
 
 	private boolean encodeJSessionId = false;
-
+	
 	/**
 	 * Configures Wicket's default ResourceLoaders.<br>
 	 * For an example in {@code FooApplication} let {@code bar.Foo} extend {@link Component}, this

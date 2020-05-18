@@ -123,15 +123,6 @@
 	</filter>
 
 	<filter>
-		<filter-name>StockQuoteApplication</filter-name>
-		<filter-class>org.apache.wicket.protocol.http.WicketFilter</filter-class>
-		<init-param>
-			<param-name>applicationClassName</param-name>
-			<param-value>org.apache.wicket.examples.stockquote.StockQuoteApplication</param-value>
-		</init-param>
-	</filter>
-
-	<filter>
 		<filter-name>HangmanApplication</filter-name>
 		<filter-class>org.apache.wicket.protocol.http.WicketFilter</filter-class>
 		<init-param>
@@ -254,6 +245,24 @@
 		<init-param>
 		  <param-name>applicationClassName</param-name>
 		  <param-value>org.apache.wicket.examples.compref.ComponentReferenceApplication</param-value>
+		</init-param>
+	</filter>
+
+	<filter>
+		<filter-name>CspApplication</filter-name>
+		<filter-class>org.apache.wicket.protocol.http.WicketFilter</filter-class>
+		<init-param>
+			<param-name>applicationClassName</param-name>
+			<param-value>org.apache.wicket.examples.csp.CspApplication</param-value>
+		</init-param>
+	</filter>
+
+	<filter>
+		<filter-name>SriApplication</filter-name>
+		<filter-class>org.apache.wicket.protocol.http.WicketFilter</filter-class>
+		<init-param>
+			<param-name>applicationClassName</param-name>
+			<param-value>org.apache.wicket.examples.sri.SriApplication</param-value>
 		</init-param>
 	</filter>
 
@@ -502,13 +511,6 @@
 		<url-pattern>/niceurl/*</url-pattern>
 		<dispatcher>REQUEST</dispatcher>
 		<dispatcher>INCLUDE</dispatcher>
-	</filter-mapping>	
-
-	<filter-mapping>
-		<filter-name>StockQuoteApplication</filter-name>
-		<url-pattern>/stock/*</url-pattern>
-		<dispatcher>REQUEST</dispatcher>
-		<dispatcher>INCLUDE</dispatcher>
 	</filter-mapping>
 
 	<filter-mapping>
@@ -640,6 +642,20 @@
 	<filter-mapping>
 		<filter-name>ComponentReferenceApplication</filter-name>
 		<url-pattern>/compref/*</url-pattern>
+		<dispatcher>REQUEST</dispatcher>
+		<dispatcher>INCLUDE</dispatcher>
+	</filter-mapping>
+
+	<filter-mapping>
+		<filter-name>CspApplication</filter-name>
+		<url-pattern>/csp/*</url-pattern>
+		<dispatcher>REQUEST</dispatcher>
+		<dispatcher>INCLUDE</dispatcher>
+	</filter-mapping>
+
+	<filter-mapping>
+		<filter-name>SriApplication</filter-name>
+		<url-pattern>/sri/*</url-pattern>
 		<dispatcher>REQUEST</dispatcher>
 		<dispatcher>INCLUDE</dispatcher>
 	</filter-mapping>

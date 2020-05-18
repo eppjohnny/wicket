@@ -16,13 +16,19 @@
  */
 package org.apache.wicket.ajax;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import org.apache.wicket.Component;
 import org.apache.wicket.MarkupContainer;
 import org.apache.wicket.MockPageWithLinkAndComponent;
@@ -36,8 +42,8 @@ import org.apache.wicket.util.resource.IResourceStream;
 import org.apache.wicket.util.resource.StringResourceStream;
 import org.apache.wicket.util.tester.DiffUtil;
 import org.apache.wicket.util.tester.WicketTestCase;
-import org.apache.wicket.util.time.Time;
-import org.junit.Test;
+import org.apache.wicket.util.time.Instants;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +52,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Frank Bille
  */
-public class AjaxRequestHandlerTest extends WicketTestCase
+class AjaxRequestHandlerTest extends WicketTestCase
 {
 	private static final Logger log = LoggerFactory.getLogger(AjaxRequestHandlerTest.class);
 
@@ -56,7 +62,7 @@ public class AjaxRequestHandlerTest extends WicketTestCase
 	 * @throws IOException
 	 */
 	@Test
-	public void headerContribution1() throws IOException
+	void headerContribution1() throws IOException
 	{
 		executeHeaderTest(MockComponent1.class, "MockComponent1-expected.html");
 	}
@@ -68,7 +74,7 @@ public class AjaxRequestHandlerTest extends WicketTestCase
 	 * @throws IOException
 	 */
 	@Test
-	public void headerContribution2() throws IOException
+	void headerContribution2() throws IOException
 	{
 		executeHeaderTest(MockComponent2.class);
 	}
@@ -79,7 +85,7 @@ public class AjaxRequestHandlerTest extends WicketTestCase
 	 * @throws IOException
 	 */
 	@Test
-	public void headerContribution3() throws IOException
+	void headerContribution3() throws IOException
 	{
 		executeHeaderTest(MockComponent3.class, "MockComponent3-expected.html");
 	}
@@ -95,7 +101,8 @@ public class AjaxRequestHandlerTest extends WicketTestCase
 	{
 		final MockPageWithLinkAndComponent page = new MockPageWithLinkAndComponent();
 
-		page.add(new WebComponent(MockPageWithLinkAndComponent.COMPONENT_ID).setOutputMarkupId(true));
+		page.add(
+			new WebComponent(MockPageWithLinkAndComponent.COMPONENT_ID).setOutputMarkupId(true));
 
 		page.add(new AjaxLink<Void>(MockPageWithLinkAndComponent.LINK_ID)
 		{
@@ -107,7 +114,8 @@ public class AjaxRequestHandlerTest extends WicketTestCase
 				// Create an instance of the component
 				try
 				{
-					Constructor<? extends Component> con = componentClass.getConstructor(new Class[] { String.class });
+					Constructor<? extends Component> con = componentClass
+						.getConstructor(new Class[] { String.class });
 
 					Component comp = con.newInstance(MockPageWithLinkAndComponent.COMPONENT_ID);
 					page.replace(comp);
@@ -145,8 +153,8 @@ public class AjaxRequestHandlerTest extends WicketTestCase
 		// This means that it doesn't exist at all
 		if (expectedFile == null)
 		{
-			assertNull("There was a header contribution on the response " +
-				"(though we didn't expect one): <" + headerContribution + ">", headerContribution);
+			assertNull(headerContribution, "There was a header contribution on the response " +
+				"(though we didn't expect one): <" + headerContribution + ">");
 		}
 		else if (headerContribution == null)
 		{
@@ -162,7 +170,7 @@ public class AjaxRequestHandlerTest extends WicketTestCase
 	 * WICKET-2328
 	 */
 	@Test
-	public void renderMyPage()
+	void renderMyPage()
 	{
 		// start and render the test page
 		tester.startPage(HomePage2.class);
@@ -186,16 +194,16 @@ public class AjaxRequestHandlerTest extends WicketTestCase
 	 * WICKET-6568
 	 */
 	@Test
-	public void lastFocusedEncoding()
+	void lastFocusedEncoding()
 	{
 		FocusPage page = new FocusPage();
-		
+
 		tester.startPage(page);
 
 		// wicket-ajax-jquery encodes non ASCII id
-		String encoded = UrlEncoder.QUERY_INSTANCE.encode("€uro", Charset.forName("UTF-8"));
+		String encoded = UrlEncoder.QUERY_INSTANCE.encode("€uro", StandardCharsets.UTF_8);
 		tester.getRequest().setHeader("Wicket-FocusedElementId", encoded);
-		
+
 		tester.executeAjaxEvent("link", "click");
 
 		assertEquals("€uro", page.lastFocusedElementId);
@@ -205,14 +213,15 @@ public class AjaxRequestHandlerTest extends WicketTestCase
 	 * WICKET-2543
 	 */
 	@Test
-	public void varargsAddComponent()
+	void varargsAddComponent()
 	{
 		tester.startPage(VarargsAddComponentPage.class);
 
 		for (int i = 0; i < VarargsAddComponentPage.NUMBER_OF_LABELS; i++)
 		{
 			final String labelMarkupId = "label" + i;
-			final String expectedContent = String.format(VarargsAddComponentPage.INITIAL_CONTENT, i);
+			final String expectedContent = String.format(VarargsAddComponentPage.INITIAL_CONTENT,
+				i);
 			tester.assertLabel(labelMarkupId, expectedContent);
 		}
 
@@ -221,17 +230,27 @@ public class AjaxRequestHandlerTest extends WicketTestCase
 		for (int i = 0; i < VarargsAddComponentPage.NUMBER_OF_LABELS; i++)
 		{
 			final String labelMarkupId = "label" + i;
-			final String expectedContent = String.format(VarargsAddComponentPage.INITIAL_CONTENT, i) +
-				VarargsAddComponentPage.AJAX_APPENDED_SUFFIX;
+			final String expectedContent = String.format(VarargsAddComponentPage.INITIAL_CONTENT,
+				i) + VarargsAddComponentPage.AJAX_APPENDED_SUFFIX;
 			tester.assertLabel(labelMarkupId, expectedContent);
 		}
+	}
+
+	@Test
+	public void addDuringRender()
+	{
+		tester.startPage(AddDuringRenderPage.class);
+
+		assertThrows(IllegalStateException.class, () -> {
+			tester.clickLink("link");
+	    });
 	}
 
 	/**
 	 * Testing the default event raised whenever Wicket begins to create an AJAX response
 	 */
 	@Test
-	public void defaultEventRaisedOnAjaxResponse()
+	void defaultEventRaisedOnAjaxResponse()
 	{
 		tester.startPage(TestEventPage.class);
 		tester.clickLink(MockPageWithLinkAndComponent.LINK_ID, true);
@@ -243,7 +262,7 @@ public class AjaxRequestHandlerTest extends WicketTestCase
 	 * @see <a href="https://issues.apache.org/jira/browse/WICKET-3263">WICKET-3263</a>
 	 */
 	@Test
-	public void globalAjaxRequestTargetListeners()
+	void globalAjaxRequestTargetListeners()
 	{
 		final ValidatingAjaxRequestTargetListener listener = new ValidatingAjaxRequestTargetListener();
 
@@ -260,20 +279,20 @@ public class AjaxRequestHandlerTest extends WicketTestCase
 	 * https://issues.apache.org/jira/browse/WICKET-3921
 	 */
 	@Test
-	public void ajaxRedirectSetsNoCachingHeaders()
+	void ajaxRedirectSetsNoCachingHeaders()
 	{
 		tester.startPage(new Wicket3921());
 
 		tester.clickLink("updatePage");
-		assertEquals(Time.START_OF_UNIX_TIME.toRfc1123TimestampString(), tester.getLastResponse()
-			.getHeader("Expires"));
+		assertEquals(Instants.toRFC7231Format(Instant.EPOCH),
+			tester.getLastResponse().getHeader("Expires"));
 		assertEquals("no-cache", tester.getLastResponse().getHeader("Pragma"));
 		assertEquals("no-cache, no-store", tester.getLastResponse().getHeader("Cache-Control"));
 
 
 		tester.clickLink("updateComponent");
-		assertEquals(Time.START_OF_UNIX_TIME.toRfc1123TimestampString(), tester.getLastResponse()
-			.getHeader("Expires"));
+		assertEquals(Instants.toRFC7231Format(Instant.EPOCH),
+			tester.getLastResponse().getHeader("Expires"));
 		assertEquals("no-cache", tester.getLastResponse().getHeader("Pragma"));
 		assertEquals("no-cache, no-store", tester.getLastResponse().getHeader("Cache-Control"));
 	}

@@ -16,11 +16,15 @@
  */
 package org.apache.wicket.core.request.mapper;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.Matchers.is;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 import org.apache.wicket.MockPage;
@@ -39,12 +43,12 @@ import org.apache.wicket.request.component.IRequestableComponent;
 import org.apache.wicket.request.component.IRequestablePage;
 import org.apache.wicket.request.mapper.parameter.INamedParameters;
 import org.apache.wicket.request.mapper.parameter.PageParameters;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author Matej Knopp
  */
-public class BookmarkableMapperTest extends AbstractMapperTest
+class BookmarkableMapperTest extends AbstractMapperTest
 {
 
 	private final BookmarkableMapper encoder = new BookmarkableMapper()
@@ -68,12 +72,12 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void decode1()
+	void decode1()
 	{
 		Url url = Url.parse("wicket/bookmarkable/" + PAGE_CLASS_NAME);
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
 
-		assertThat(handler, instanceOf(RenderPageRequestHandler.class));
+		assertThat(handler).isInstanceOf(RenderPageRequestHandler.class);
 		IRequestablePage page = ((RenderPageRequestHandler)handler).getPage();
 		assertEquals(PAGE_CLASS_NAME, page.getClass().getName());
 		assertEquals(0, page.getPageParameters().getIndexedCount());
@@ -84,7 +88,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 * https://issues.apache.org/jira/browse/WICKET-5500
 	 */
 	@Test
-	public void decodePageClassWithPathParameters()
+	void decodePageClassWithPathParameters()
 	{
 		Url url = Url.parse("wicket/bookmarkable/" + PAGE_CLASS_NAME + ";something=else");
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
@@ -100,12 +104,11 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void decode2()
+	void decode2()
 	{
 		Url url = Url.parse("wicket/bookmarkable/" + PAGE_CLASS_NAME + "/indexed1?a=b&b=c");
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
-
-		assertThat(handler, instanceOf(RenderPageRequestHandler.class));
+		assertThat(handler).isInstanceOf(RenderPageRequestHandler.class);
 		IRequestablePage page = ((RenderPageRequestHandler)handler).getPage();
 		assertEquals(PAGE_CLASS_NAME, page.getClass().getName());
 
@@ -126,12 +129,12 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 * nor in the query string) so the resolved page is assumed to be valid.
 	 */
 	@Test
-	public void decode3()
+	void decode3()
 	{
 		Url url = Url.parse("wicket/bookmarkable/" + PAGE_CLASS_NAME + "?15");
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
 
-		assertThat(handler, instanceOf(RenderPageRequestHandler.class));
+		assertThat(handler).isInstanceOf(RenderPageRequestHandler.class);
 		IRequestablePage page = ((RenderPageRequestHandler)handler).getPage();
 		checkPage(page, 15);
 	}
@@ -151,12 +154,12 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 * then Wicket will create a new page that will show product=24
 	 */
 	@Test
-	public void decode4()
+	void decode4()
 	{
 		Url url = Url.parse("wicket/bookmarkable/" + PAGE_CLASS_NAME + "/i1/i2?15&a=b&b=c");
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
 
-		assertThat(handler, instanceOf(RenderPageRequestHandler.class));
+		assertThat(handler).isInstanceOf(RenderPageRequestHandler.class);
 		RenderPageRequestHandler h = (RenderPageRequestHandler) handler;
 		((PageProvider) h.getPageProvider()).setPageSource(context);
 		IRequestablePage page = h.getPage();
@@ -172,12 +175,12 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void decode5()
+	void decode5()
 	{
 		Url url = Url.parse("wicket/bookmarkable/" + PAGE_CLASS_NAME + "?15--foo-bar");
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
 
-		assertThat(handler, instanceOf(ListenerRequestHandler.class));
+		assertThat(handler).isInstanceOf(ListenerRequestHandler.class);
 
 		ListenerRequestHandler h = (ListenerRequestHandler)handler;
 
@@ -192,13 +195,13 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void decode6()
+	void decode6()
 	{
 		Url url = Url.parse("wicket/bookmarkable/" + PAGE_CLASS_NAME
 			+ "/i1/i2?15--foo-bar&a=b&b=c");
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
 
-		assertThat(handler, instanceOf(ListenerRequestHandler.class));
+		assertThat(handler).isInstanceOf(ListenerRequestHandler.class);
 		ListenerRequestHandler h = (ListenerRequestHandler)handler;
 
 		IRequestablePage page = h.getPage();
@@ -216,13 +219,13 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void decode7()
+	void decode7()
 	{
 		Url url = Url.parse("wicket/bookmarkable/" + PAGE_CLASS_NAME
 			+ "?15-ILinkListener.4-foo-bar");
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
 
-		assertThat(handler, instanceOf(ListenerRequestHandler.class));
+		assertThat(handler).isInstanceOf(ListenerRequestHandler.class);
 
 		ListenerRequestHandler h = (ListenerRequestHandler)handler;
 
@@ -237,7 +240,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void decode8()
+	void decode8()
 	{
 		Url url = Url.parse("wicket/bookmarkable/" + PAGE_CLASS_NAME
 			+ "/i1/i2?15-5.ILinkListener-foo-bar&a=b&b=c");
@@ -246,7 +249,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
 
-		assertThat(handler, instanceOf(ListenerRequestHandler.class));
+		assertThat(handler).isInstanceOf(ListenerRequestHandler.class);
 		ListenerRequestHandler h = (ListenerRequestHandler)handler;
 
 		IRequestablePage page = h.getPage();
@@ -256,29 +259,30 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	/**
 	 *
 	 */
-	@Test(expected = StalePageException.class)
-	public void decode9()
+	@Test
+	void decode9()
 	{
-		Url url = Url.parse("wicket/bookmarkable/" + PAGE_CLASS_NAME
-			+ "/i1/i2?15-5.ILinkListener-foo-bar&a=b&b=c");
+		assertThrows(StalePageException.class, () -> {
+			Url url = Url.parse("wicket/bookmarkable/" + PAGE_CLASS_NAME
+										+ "/i1/i2?15-5.ILinkListener-foo-bar&a=b&b=c");
 
-		context.setNextPageRenderCount(6);
-		IRequestHandler handler = encoder.mapRequest(getRequest(url));
-
-		((IPageRequestHandler)handler).getPage();
+			context.setNextPageRenderCount(6);
+			IRequestHandler handler = encoder.mapRequest(getRequest(url));
+			((IPageRequestHandler)handler).getPage();
+		});
 	}
 
 	/**
 	 * WICKET-2993
 	 */
 	@Test
-	public void decode10()
+	void decode10()
 	{
 		// use String.class but any other non-Page will do the job as well
 		Url url = Url.parse("wicket/bookmarkable/" + String.class.getName());
 
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
-		assertNull("A non-page class should not create a request handler!", handler);
+		assertNull(handler, "A non-page class should not create a request handler!");
 	}
 
 	/**
@@ -291,7 +295,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 * {@link org.apache.wicket.core.request.mapper.IMapperContext#getBookmarkableIdentifier()}
 	 */
 	@Test
-	public void decode11()
+	void decode11()
 	{
 		final Url url = Url.parse(context.getBookmarkableIdentifier() + "/" + PAGE_CLASS_NAME);
 
@@ -312,7 +316,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 			@Override
 			public Charset getCharset()
 			{
-				return Charset.forName("UTF-8");
+				return StandardCharsets.UTF_8;
 			}
 
 			@Override
@@ -333,8 +337,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 		};
 
 		IRequestHandler handler = encoder.mapRequest(request);
-		assertNotNull("A handler should be resolved for relative url to a bookmarkable page!",
-			handler);
+		assertNotNull(handler, "A handler should be resolved for relative url to a bookmarkable page!");
 
 		IRequestablePage page = ((IPageRequestHandler)handler).getPage();
 		assertEquals(page.getClass().getName(), PAGE_CLASS_NAME);
@@ -350,7 +353,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 * {@link org.apache.wicket.core.request.mapper.IMapperContext#getPageIdentifier()}
 	 */
 	@Test
-	public void decode12()
+	void decode12()
 	{
 		final Url url = Url.parse(context.getBookmarkableIdentifier() + "/" + PAGE_CLASS_NAME);
 
@@ -371,7 +374,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 			@Override
 			public Charset getCharset()
 			{
-				return Charset.forName("UTF-8");
+				return StandardCharsets.UTF_8;
 			}
 
 			@Override
@@ -391,8 +394,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 		};
 
 		IRequestHandler handler = encoder.mapRequest(request);
-		assertNotNull("A handler should be resolved for relative url to a page instance url!",
-			handler);
+		assertNotNull(handler, "A handler should be resolved for relative url to a page instance url!");
 
 		IRequestablePage page = ((IPageRequestHandler)handler).getPage();
 		assertEquals(page.getClass().getName(), PAGE_CLASS_NAME);
@@ -408,7 +410,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 * {@link org.apache.wicket.core.request.mapper.IMapperContext#getPageIdentifier()}
 	 */
 	@Test
-	public void decode13()
+	void decode13()
 	{
 		final Url url = Url.parse(context.getBookmarkableIdentifier() + "/" + PAGE_CLASS_NAME);
 
@@ -429,7 +431,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 			@Override
 			public Charset getCharset()
 			{
-				return Charset.forName("UTF-8");
+				return StandardCharsets.UTF_8;
 			}
 
 			@Override
@@ -448,8 +450,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 		};
 
 		IRequestHandler handler = encoder.mapRequest(request);
-		assertNotNull("A handler should be resolved for relative url to a bookmarkable page url!",
-			handler);
+		assertNotNull(handler, "A handler should be resolved for relative url to a bookmarkable page url!");
 
 		IRequestablePage page = ((IPageRequestHandler)handler).getPage();
 		assertEquals(page.getClass().getName(), PAGE_CLASS_NAME);
@@ -459,43 +460,43 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 * https://issues.apache.org/jira/browse/WICKET-5673
 	 */
 	@Test
-	public void decode14()
+	void decode14()
 	{
 		Url url = Url.parse("wicket/bookmarkable/");
 		int score = encoder.getCompatibilityScore(getRequest(url));
 
-		assertThat(score, is(0));
+		assertEquals(0, score);
 	}
 
 	/**
 	 * https://issues.apache.org/jira/browse/WICKET-5996
 	 */
 	@Test
-	public void decode15()
+	void decode15()
 	{
 		Url url = Url.parse("wicket/bookmarkable");
 		final AbstractBookmarkableMapper.UrlInfo urlInfo = encoder.parseRequest(getRequest(url));
 
-		assertThat(urlInfo, is(nullValue()));
+		assertNull(urlInfo);
 	}
 
 	/**
 	 * https://issues.apache.org/jira/browse/WICKET-5996
 	 */
 	@Test
-	public void decode16()
+	void decode16()
 	{
 		Url url = Url.parse("wicket/bookmarkable/");
 		final AbstractBookmarkableMapper.UrlInfo urlInfo = encoder.parseRequest(getRequest(url));
 
-		assertThat(urlInfo, is(nullValue()));
+		assertNull(urlInfo);
 	}
 
 	/**
 	 *
 	 */
 	@Test
-	public void encode1()
+	void encode1()
 	{
 		PageProvider provider = new PageProvider(MockPage.class, new PageParameters());
 		provider.setPageSource(context);
@@ -508,7 +509,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void encode2()
+	void encode2()
 	{
 		PageParameters parameters = new PageParameters();
 		parameters.set(0, "i1");
@@ -526,7 +527,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void encode3()
+	void encode3()
 	{
 		PageParameters parameters = new PageParameters();
 		parameters.set(0, "i1");
@@ -546,7 +547,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void encode4()
+	void encode4()
 	{
 		MockPage page = new MockPage(15);
 		page.getPageParameters().set(0, "i1");
@@ -566,7 +567,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void encode5()
+	void encode5()
 	{
 		MockPage page = new MockPage(15);
 		page.getPageParameters().set(0, "i1");
@@ -591,7 +592,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void encode6()
+	void encode6()
 	{
 		MockPage page = new MockPage(15);
 		page.getPageParameters().set(0, "i1");
@@ -618,7 +619,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void encode7()
+	void encode7()
 	{
 		MockPage page = new MockPage(15);
 		page.getPageParameters().set(0, "i1");
@@ -645,7 +646,7 @@ public class BookmarkableMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void encode8()
+	void encode8()
 	{
 		MockPage page = new MockPage(15);
 		page.setBookmarkable(true);

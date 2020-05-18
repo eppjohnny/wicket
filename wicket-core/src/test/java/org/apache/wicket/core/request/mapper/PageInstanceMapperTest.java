@@ -16,10 +16,15 @@
  */
 package org.apache.wicket.core.request.mapper;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+
 import org.apache.wicket.MockPage;
 import org.apache.wicket.core.request.handler.IPageProvider;
 import org.apache.wicket.core.request.handler.IPageRequestHandler;
@@ -32,13 +37,13 @@ import org.apache.wicket.request.Request;
 import org.apache.wicket.request.Url;
 import org.apache.wicket.request.component.IRequestableComponent;
 import org.apache.wicket.request.component.IRequestablePage;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * 
  * @author Matej Knopp
  */
-public class PageInstanceMapperTest extends AbstractMapperTest
+class PageInstanceMapperTest extends AbstractMapperTest
 {
 
 	private final PageInstanceMapper encoder = new PageInstanceMapper()
@@ -54,12 +59,12 @@ public class PageInstanceMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void decode1()
+	void decode1()
 	{
 		Url url = Url.parse("wicket/page?4");
 
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
-		assertThat(handler, instanceOf(RenderPageRequestHandler.class));
+		assertThat(handler).isInstanceOf(RenderPageRequestHandler.class);
 
 		RenderPageRequestHandler h = (RenderPageRequestHandler)handler;
 		checkPage(h.getPage(), 4);
@@ -69,12 +74,12 @@ public class PageInstanceMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void decode2()
+	void decode2()
 	{
 		Url url = Url.parse("wicket/page?4&a=3&b=3");
 
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
-		assertThat(handler, instanceOf(RenderPageRequestHandler.class));
+		assertThat(handler).isInstanceOf(RenderPageRequestHandler.class);
 
 		RenderPageRequestHandler h = (RenderPageRequestHandler)handler;
 		checkPage(h.getPage(), 4);
@@ -84,7 +89,7 @@ public class PageInstanceMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void ignoreIfPageIdentifierHasSegmentsAfterIt()
+	void ignoreIfPageIdentifierHasSegmentsAfterIt()
 	{
 		Url url = Url.parse("wicket/page/ingore/me?4&a=3&b=3");
 		
@@ -96,12 +101,12 @@ public class PageInstanceMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void decode3()
+	void decode3()
 	{
 		Url url = Url.parse("wicket/page?4--a-b-c");
 
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
-		assertThat(handler, instanceOf(ListenerRequestHandler.class));
+		assertThat(handler).isInstanceOf(ListenerRequestHandler.class);
 
 		ListenerRequestHandler h = (ListenerRequestHandler)handler;
 		checkPage(h.getPage(), 4);
@@ -113,7 +118,7 @@ public class PageInstanceMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void decode4()
+	void decode4()
 	{
 		Url url = Url.parse("wickett/pagee?4--a:b-c");
 
@@ -125,7 +130,7 @@ public class PageInstanceMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void decode5()
+	void decode5()
 	{
 		Url url = Url.parse("wicket/page?abc");
 
@@ -137,12 +142,12 @@ public class PageInstanceMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void decode6()
+	void decode6()
 	{
 		Url url = Url.parse("wicket/page?4-ILinkListener.5-a-b-c");
 
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
-		assertThat(handler, instanceOf(ListenerRequestHandler.class));
+		assertThat(handler).isInstanceOf(ListenerRequestHandler.class);
 
 		ListenerRequestHandler h = (ListenerRequestHandler)handler;
 		checkPage(h.getPage(), 4);
@@ -154,14 +159,14 @@ public class PageInstanceMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void decode7()
+	void decode7()
 	{
 		Url url = Url.parse("wicket/page?4-6.5-a-b-c");
 
 		context.setNextPageRenderCount(6);
 
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
-		assertThat(handler, instanceOf(ListenerRequestHandler.class));
+		assertThat(handler).isInstanceOf(ListenerRequestHandler.class);
 
 		ListenerRequestHandler h = (ListenerRequestHandler)handler;
 		assertEquals(6, h.getPage().getRenderCount());
@@ -170,8 +175,8 @@ public class PageInstanceMapperTest extends AbstractMapperTest
 	/**
 	 *
 	 */
-	@Test(expected = StalePageException.class)
-	public void decode8()
+	@Test
+	void decode8()
 	{
 		Url url = Url.parse("wicket/page?4-6.5-a-b-c");
 
@@ -179,11 +184,13 @@ public class PageInstanceMapperTest extends AbstractMapperTest
 
 		IRequestHandler handler = encoder.mapRequest(getRequest(url));
 
-		((IPageRequestHandler)handler).getPage();
+		assertThrows(StalePageException.class, () -> {
+			((IPageRequestHandler)handler).getPage();
+		});
 	}
 
 	@Test
-	public void decode9()
+	void decode9()
 	{
 		final Url url = Url.parse("page?4");
 
@@ -204,7 +211,7 @@ public class PageInstanceMapperTest extends AbstractMapperTest
 			@Override
 			public Charset getCharset()
 			{
-				return Charset.forName("UTF-8");
+				return StandardCharsets.UTF_8;
 			}
 
 			@Override
@@ -228,7 +235,7 @@ public class PageInstanceMapperTest extends AbstractMapperTest
 
 
 	@Test
-	public void decode10()
+	void decode10()
 	{
 		final Url url = Url.parse("page?4");
 
@@ -249,7 +256,7 @@ public class PageInstanceMapperTest extends AbstractMapperTest
 			@Override
 			public Charset getCharset()
 			{
-				return Charset.forName("UTF-8");
+				return StandardCharsets.UTF_8;
 			}
 
 			@Override
@@ -275,7 +282,7 @@ public class PageInstanceMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void encode1()
+	void encode1()
 	{
 		MockPage page = new MockPage(15);
 		IPageProvider provider = new PageProvider(page);
@@ -290,7 +297,7 @@ public class PageInstanceMapperTest extends AbstractMapperTest
 	 *
 	 */
 	@Test
-	public void encode2()
+	void encode2()
 	{
 		MockPage page = new MockPage(15);
 		page.setRenderCount(5);

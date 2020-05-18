@@ -16,13 +16,13 @@
  */
 package org.apache.wicket.ajax;
 
+import java.time.Duration;
 import org.apache.wicket.Component;
 import org.apache.wicket.Page;
 import org.apache.wicket.core.request.handler.IPartialPageRequestHandler;
 import org.apache.wicket.markup.head.IHeaderResponse;
 import org.apache.wicket.markup.head.OnLoadHeaderItem;
 import org.apache.wicket.util.lang.Args;
-import org.apache.wicket.util.time.Duration;
 import org.danekja.java.util.function.serializable.SerializableConsumer;
 
 /**
@@ -52,9 +52,23 @@ public abstract class AbstractAjaxTimerBehavior extends AbstractDefaultAjaxBehav
 
 	/**
 	 * Construct.
-	 * 
+	 *
 	 * @param updateInterval
-	 *            Duration between AJAX callbacks
+	 *            {@link org.apache.wicket.util.time.Duration} between AJAX callbacks
+	 *
+	 * @deprecated Since Wicket 9 this constructor is deprecated. It will be removed in Wicket 10. Use {@link AbstractAjaxTimerBehavior#AbstractAjaxTimerBehavior(Duration)} instead
+	 */
+	@Deprecated
+	public AbstractAjaxTimerBehavior(final org.apache.wicket.util.time.Duration updateInterval)
+	{
+		setUpdateInterval(updateInterval.toJavaDuration());
+	}
+
+	/**
+	 * Construct.
+	 *
+	 * @param updateInterval
+	 *            {@link Duration} between AJAX callbacks
 	 */
 	public AbstractAjaxTimerBehavior(final Duration updateInterval)
 	{
@@ -69,7 +83,7 @@ public abstract class AbstractAjaxTimerBehavior extends AbstractDefaultAjaxBehav
 	 */
 	protected final void setUpdateInterval(Duration updateInterval)
 	{
-		if (updateInterval == null || updateInterval.getMilliseconds() <= 0)
+		if (updateInterval == null || updateInterval.toMillis() <= 0)
 		{
 			throw new IllegalArgumentException("Invalid update interval");
 		}
@@ -97,10 +111,6 @@ public abstract class AbstractAjaxTimerBehavior extends AbstractDefaultAjaxBehav
 		}
 	}
 
-	/**
-	 * 
-	 * @see org.apache.wicket.ajax.AbstractDefaultAjaxBehavior#respond(AjaxRequestTarget)
-	 */
 	@Override
 	protected final void respond(final AjaxRequestTarget target)
 	{
@@ -202,7 +212,7 @@ public abstract class AbstractAjaxTimerBehavior extends AbstractDefaultAjaxBehav
 
 		headerResponse.render(
 			OnLoadHeaderItem.forScript(String.format("Wicket.Timer.set('%s', function(){%s}, %d);",
-				timerId, js, updateInterval.getMilliseconds())));
+				timerId, js, updateInterval.toMillis())));
 	}
 
 	private void clearTimeout(IHeaderResponse headerResponse)

@@ -16,7 +16,11 @@
  */
 package org.apache.wicket.protocol.ws.api;
 
-import org.apache.wicket.Application;
+import java.util.Map;
+import java.util.Set;
+import javax.servlet.SessionTrackingMode;
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
 import org.apache.wicket.Component;
 import org.apache.wicket.behavior.Behavior;
 import org.apache.wicket.markup.head.IHeaderResponse;
@@ -30,19 +34,13 @@ import org.apache.wicket.util.lang.Generics;
 import org.apache.wicket.util.string.Strings;
 import org.apache.wicket.util.template.PackageTextTemplate;
 
-import java.util.Map;
-import java.util.Set;
-
-import javax.servlet.SessionTrackingMode;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-
 /**
  * A behavior that contributes {@link WicketWebSocketJQueryResourceReference}
  */
 public class BaseWebSocketBehavior extends Behavior
 {
 	private final String resourceName;
+	private final String connectionToken;
 
 	/**
 	 * Constructor.
@@ -53,6 +51,7 @@ public class BaseWebSocketBehavior extends Behavior
 	protected BaseWebSocketBehavior()
 	{
 		this.resourceName = null;
+		this.connectionToken = null;
 	}
 
 	/**
@@ -73,7 +72,31 @@ public class BaseWebSocketBehavior extends Behavior
 	 */
 	public BaseWebSocketBehavior(String resourceName)
 	{
+		this(resourceName, null);
+	}
+
+	/**
+	 * Constructor.
+	 *
+	 * Contributes WebSocket initialization code that will
+	 * work with {@link org.apache.wicket.protocol.ws.api.WebSocketResource}
+	 *
+	 * To use WebSocketResource the application have to setup the
+	 * resource as a shared one in its {@link org.apache.wicket.Application#init()}
+	 * method:
+	 * <code><pre>
+	 *     getSharedResources().add(resourceName, new MyWebSocketResource())
+	 * </pre></code>
+	 *
+	 *  @param resourceName
+	 *          the name of the shared {@link org.apache.wicket.protocol.ws.api.WebSocketResource}
+	 *  @param connectionToken
+	 *  		an optional token to support connections to the same resource from multiple browser tabs
+	 */
+	public BaseWebSocketBehavior(String resourceName, String connectionToken)
+	{
 		this.resourceName = Args.notEmpty(resourceName, "resourceName");
+		this.connectionToken = connectionToken;
 	}
 
 	@Override
@@ -83,12 +106,22 @@ public class BaseWebSocketBehavior extends Behavior
 
 		response.render(JavaScriptHeaderItem.forReference(WicketWebSocketJQueryResourceReference.get()));
 
+		Map<String, Object> parameters = getParameters(component);
+		String webSocketSetupScript = getWebSocketSetupScript(parameters);
+
+		response.render(OnDomReadyHeaderItem.forScript(webSocketSetupScript));
+	}
+
+	protected String getWebSocketSetupScript(Map<String, Object> parameters) {
 		PackageTextTemplate webSocketSetupTemplate =
 				new PackageTextTemplate(WicketWebSocketJQueryResourceReference.class,
 						"res/js/wicket-websocket-setup.js.tmpl");
 
-		Map<String, Object> variables = Generics.newHashMap();
+		return webSocketSetupTemplate.asString(parameters);
+	}
 
+	private Map<String, Object> getParameters(Component component) {
+		Map<String, Object> variables = Generics.newHashMap();
 
 		// set falsy JS values for the non-used parameter
 		if (Strings.isEmpty(resourceName))
@@ -96,10 +129,12 @@ public class BaseWebSocketBehavior extends Behavior
 			int pageId = component.getPage().getPageId();
 			variables.put("pageId", pageId);
 			variables.put("resourceName", "");
+			variables.put("connectionToken", "");
 		}
 		else
 		{
 			variables.put("resourceName", resourceName);
+			variables.put("connectionToken", connectionToken);
 			variables.put("pageId", false);
 		}
 
@@ -127,10 +162,7 @@ public class BaseWebSocketBehavior extends Behavior
 
 		final CharSequence sessionId = getSessionId(component);
 		variables.put("sessionId", sessionId);
-
-		String webSocketSetupScript = webSocketSetupTemplate.asString(variables);
-
-		response.render(OnDomReadyHeaderItem.forScript(webSocketSetupScript));
+		return variables;
 	}
 
 	protected Integer getPort(WebSocketSettings webSocketSettings)
@@ -173,7 +205,7 @@ public class BaseWebSocketBehavior extends Behavior
 		else if (containerRequest instanceof HttpServletRequest)
 		{
 			CookieUtils cookieUtils = new CookieUtils();
-			final String jsessionCookieName = application.getServletContext().getSessionCookieConfig().getName();
+			final String jsessionCookieName = cookieUtils.getSessionIdCookieName(application);
 			final Cookie jsessionid = cookieUtils.getCookie(jsessionCookieName);
 			HttpServletRequest httpServletRequest = (HttpServletRequest) containerRequest;
 			if (jsessionid == null || httpServletRequest.isRequestedSessionIdValid() == false)

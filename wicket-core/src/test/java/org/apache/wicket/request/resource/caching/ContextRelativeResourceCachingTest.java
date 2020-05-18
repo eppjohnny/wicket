@@ -16,9 +16,12 @@
  */
 package org.apache.wicket.request.resource.caching;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 import org.apache.wicket.request.IRequestHandler;
@@ -31,14 +34,14 @@ import org.apache.wicket.request.resource.SharedResourceReference;
 import org.apache.wicket.request.resource.caching.version.IResourceVersion;
 import org.apache.wicket.request.resource.caching.version.StaticResourceVersion;
 import org.apache.wicket.util.tester.WicketTestCase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * 
  */
-public class ContextRelativeResourceCachingTest extends WicketTestCase
+class ContextRelativeResourceCachingTest extends WicketTestCase
 {
-	private static final Charset CHARSET = Charset.forName("UTF-8");
+	private static final Charset CHARSET = StandardCharsets.UTF_8;
 	private static final String SHARED_NAME = "contextresource";
 
 	private Request createRequest(final String url)
@@ -93,7 +96,7 @@ public class ContextRelativeResourceCachingTest extends WicketTestCase
 	 * 
 	 */
 	@Test
-	public void mapHandler()
+	void mapHandler()
 	{
 		ContextRelativeResource resource = new ContextRelativeResource("/style.css");
 		init(resource, "/test/resource");
@@ -101,7 +104,7 @@ public class ContextRelativeResourceCachingTest extends WicketTestCase
 		Request request = createRequest("test/resource-version-123?bla=4567");
 		final IRequestHandler handler = tester.getApplication().getRootRequestMapper()
 			.mapRequest(request);
-		assertThat(handler, instanceOf(ResourceReferenceRequestHandler.class));
+		assertThat(handler).isInstanceOf(ResourceReferenceRequestHandler.class);
 		assertEquals(((ResourceReferenceRequestHandler)handler).getResource(), resource);
 	}
 
@@ -109,7 +112,7 @@ public class ContextRelativeResourceCachingTest extends WicketTestCase
 	 * 
 	 */
 	@Test
-	public void mapRequest()
+	void mapRequest()
 	{
 		ContextRelativeResource resource = new ContextRelativeResource("/style.css");
 		init(resource, "/test/resource");

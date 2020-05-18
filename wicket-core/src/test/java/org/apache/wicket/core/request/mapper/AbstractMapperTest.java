@@ -16,29 +16,31 @@
  */
 package org.apache.wicket.core.request.mapper;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 import org.apache.wicket.request.Request;
 import org.apache.wicket.request.Url;
 import org.apache.wicket.request.component.IRequestablePage;
-import org.junit.Assert;
 
 /**
  * @author Matej Knopp
  */
-public abstract class AbstractMapperTest extends Assert
+abstract class AbstractMapperTest
 {
 	/**
 	 * Construct.
 	 */
-	public AbstractMapperTest()
+	AbstractMapperTest()
 	{
 	}
 
-	protected TestMapperContext context = new TestMapperContext();
+	TestMapperContext context = new TestMapperContext();
 
-	protected Request getRequest(final Url url)
+	Request getRequest(final Url url)
 	{
 		return new Request()
 		{
@@ -57,7 +59,7 @@ public abstract class AbstractMapperTest extends Assert
 			@Override
 			public Charset getCharset()
 			{
-				return Charset.forName("UTF-8");
+				return StandardCharsets.UTF_8;
 			}
 
 			@Override
@@ -74,7 +76,7 @@ public abstract class AbstractMapperTest extends Assert
 		};
 	}
 
-	protected void checkPage(IRequestablePage page, int id)
+	void checkPage(IRequestablePage page, int id)
 	{
 		assertEquals(id, page.getPageId());
 	}

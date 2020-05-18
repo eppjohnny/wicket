@@ -18,11 +18,12 @@ package org.apache.wicket.core.util.resource;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.wicket.Application;
 import org.apache.wicket.util.io.Connections;
 import org.apache.wicket.util.io.IOUtils;
@@ -32,7 +33,6 @@ import org.apache.wicket.util.lang.Objects;
 import org.apache.wicket.util.resource.AbstractResourceStream;
 import org.apache.wicket.util.resource.IFixedLocationResourceStream;
 import org.apache.wicket.util.resource.ResourceStreamNotFoundException;
-import org.apache.wicket.util.time.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +63,7 @@ public class UrlResourceStream extends AbstractResourceStream
 	private final URL url;
 
 	/** Last known time the stream was last modified. */
-	private Time lastModified;
+	private Instant lastModified;
 
 	/**
 	 * Meta data class for the stream attributes
@@ -119,9 +119,16 @@ public class UrlResourceStream extends AbstractResourceStream
 				streamData.connection = url.openConnection();
 				streamData.contentLength = streamData.connection.getContentLength();
 
+				// Default implementation "sun.net.www.MimeTable" works on strings with "/" only and
+				// doesn't properly parse paths nor URLs. So providing an absolute URI is compatible
+				// with the default implementation, while the string can't be misinterpreted as path
+				// like has been the case with "URL.getFile" before. That doesn't decode to paths,
+				// results only look similar sometimes.
+				String uriStr = url.toURI().toString();
+
 				if (Application.exists())
 				{
-					streamData.contentType = Application.get().getMimeType(url.getFile());
+					streamData.contentType = Application.get().getMimeType(uriStr);
 				}
 				else
 				{
@@ -131,10 +138,10 @@ public class UrlResourceStream extends AbstractResourceStream
 				if (streamData.contentType == null || streamData.contentType.contains("unknown"))
 				{
 					streamData.contentType = URLConnection.getFileNameMap().getContentTypeFor(
-						url.getFile());
+						uriStr);
 				}
 			}
-			catch (IOException ex)
+			catch (IOException | URISyntaxException ex)
 			{
 				throw new IllegalArgumentException("Invalid URL parameter " + url, ex);
 			}
@@ -202,12 +209,12 @@ public class UrlResourceStream extends AbstractResourceStream
 	 * @return The last time this resource was modified
 	 */
 	@Override
-	public Time lastModifiedTime()
+	public Instant lastModifiedTime()
 	{
 		try
 		{
 			// get url modification timestamp
-			final Time time = Connections.getLastModified(url);
+			final Instant time = Connections.getLastModified(url);
 
 			// if timestamp changed: update content length and last modified date
 			if (Objects.equal(time, lastModified) == false)
